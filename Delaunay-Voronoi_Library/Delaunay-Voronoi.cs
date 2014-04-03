@@ -71,24 +71,29 @@ namespace Delaunay_Voronoi_Library
         /// <param name="Uncertainty">The uncertainty flag </param>
         public Delaunay_Voronoi(List<Vertex> vertices, bool Uncertainty = false)
         {
-            int lenght = vertices.Count, i = 2;
+            int lenght = vertices.Count, i = 0, j = 1, k = 2;
             if (lenght < 4) { Console.WriteLine("слишком мало точек"); return; }
-            double A = 0, B = 0, C = 0;
+            double A = 0;
             Vertex v0 = null, v1 = null, v2 = null;
-            if (lenght > 2)
+            bool check = false;
+            while (true)
             {
-                v0 = vertices[0];
-                v1 = vertices[1];
-                do
-                {
-                    v2 = vertices[i++];
-                    A = (v1.Y - v0.Y) * (v2.Z - v0.Z) - (v1.Z - v0.Z) * (v2.Y - v0.Y);
-                    B = (v1.Z - v0.Z) * (v2.X - v0.X) - (v1.X - v0.X) * (v2.Z - v0.Z);
-                    C = (v1.X - v0.X) * (v2.Y - v0.Y) - (v1.Y - v0.Y) * (v2.X - v0.X);
-                } while (A == 0 && B == 0 && C == 0 && i < lenght);
-            }
+                v0 = vertices[i];
+                v1 = vertices[j];
+                v2 = vertices[k];
 
-            if (A != 0 || B != 0 || C != 0)
+                A = ((v1.Y - v0.Y) * (v2.Z - v0.Z) - (v1.Z - v0.Z) * (v2.Y - v0.Y)) * (-v0.X) +
+                ((v1.X - v0.X) * (v2.Y - v0.Y) - (v1.Y - v0.Y) * (v2.X - v0.X)) * (-v0.Z) +
+                 ((v1.X - v0.X) * (v2.Z - v0.Z) - (v1.Z - v0.Z) * (v2.X - v0.X)) * (-v0.Y);
+                
+                if (A != 0) break;
+                k++;
+                if (k == lenght - 1) { j += 1; k = j + 1; }
+                if (j == lenght - 1) { i += 1; j = i + 1; }
+                if (i == lenght - 1) break;
+
+            }
+            if (A != 0)
             {
                 var er = new double[] { v0.X + v1.X + v2.X, v0.Y + v1.Y + v2.Y, v0.Z + v1.Z + v2.Z };
                 var rty = Math.Sqrt(er[0] * er[0] + er[1] * er[1] + er[2] * er[2]);
