@@ -122,7 +122,7 @@ namespace Delaunay_Voronoi_Library
 
                 var tu = DateTime.Now;
                 if (Uncertainty == true) createvariogram(this.vertices.ToList(),25);
-                Console.WriteLine("Variogram: {0}", DateTime.Now - tu);
+                //Console.WriteLine("Variogram: {0}", DateTime.Now - tu);
             }
         }
 
@@ -214,7 +214,7 @@ namespace Delaunay_Voronoi_Library
                     l.Push(new KeyValuePair<double, double>(d, Math.Abs(u.Value - y.Value)));
                 }
             }
-            Console.WriteLine(DateTime.Now-trt);
+            //Console.WriteLine(DateTime.Now-trt);
             
             trt = DateTime.Now;
             x.Add(new KeyValuePair<double, double>(1, 0));
@@ -245,7 +245,7 @@ namespace Delaunay_Voronoi_Library
                 }
             }
 
-            Console.WriteLine(DateTime.Now - trt);
+            //Console.WriteLine(DateTime.Now - trt);
             trt = DateTime.Now;
             apprvariogramm.Add(new KeyValuePair<double, double>(0, 0));
             for (int i = 0; i < s; i++)
@@ -256,7 +256,7 @@ namespace Delaunay_Voronoi_Library
                 apprvariogramm.Add(new KeyValuePair<double, double>(Math.Acos(x[i].Value), d));
             }
             apprvariogramm.OrderByDescending(a => a.Key);
-            Console.WriteLine(DateTime.Now - trt);
+            //Console.WriteLine(DateTime.Now - trt);
         }
 
         int addnewpoint(Vertex x, bool p = true)
@@ -297,7 +297,8 @@ namespace Delaunay_Voronoi_Library
                     {
                         x.Value = ind0.Value;
                     }
-                    else { Console.WriteLine("Warning: SingularPoint"); }
+                    else { //Console.WriteLine("Warning: SingularPoint");
+                    }
                     return -1;
                 }
             }
@@ -577,19 +578,25 @@ namespace Delaunay_Voronoi_Library
 
             double sq = 0;
             Dictionary<Vertex, double> dict = new Dictionary<Vertex, double>();
+
+            List<Tuple<Vertex, double>> lambdas = new List<Tuple<Vertex, double>>();
+
             foreach (var q in lv)
             {
                 if ((!ExceptNaN) || (ExceptNaN && !double.IsNaN(q.Value)))
                 {
                     double sqss = q.Voronoi_Cell.GetSquare;
                     double sqs = pseudopol.Single(a => a.GetCellCentr == q).GetSquare;
-                    double delta = sqss - sqs;
+                    double delta = Math.Max(0.0,sqss - sqs);
                     vert.Value += delta * q.Value;
                     sq += delta;
                     dict.Add(q, delta);
+                    lambdas.Add(Tuple.Create(q, delta));
                 }
             }
             vert.Value /= sq;
+
+            vert.LambdasArray = lambdas.Select(a => Tuple.Create(a.Item1,a.Item2/sq)).ToArray();
 
             if (Uncertainty == true)
             {
@@ -660,7 +667,7 @@ namespace Delaunay_Voronoi_Library
                 dvm[0] = this;
                 for (int i = 1; i < pc; i++)
                     dvm[i] = new Delaunay_Voronoi(this);
-                Console.WriteLine("Copy {0}", DateTime.Now - c);
+                //Console.WriteLine("Copy {0}", DateTime.Now - c);
 
                 int[] h = new Int32[pc + 1];
                 h[0] = 0;

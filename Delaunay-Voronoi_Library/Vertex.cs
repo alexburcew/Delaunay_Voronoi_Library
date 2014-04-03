@@ -231,5 +231,6 @@ namespace Delaunay_Voronoi_Library
         }
         #endregion _public_methods
 
+        public Tuple<Vertex, double>[] LambdasArray = null;
     }
 }
