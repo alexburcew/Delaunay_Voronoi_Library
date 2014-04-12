@@ -177,7 +177,7 @@
             The Vertex with 3D position and value
             </summary>
         </member>
-        <member name="M:Delaunay_Voronoi_Library.Vertex.#ctor(System.Double,System.Double,System.Double)">
+        <member name="M:Delaunay_Voronoi_Library.Vertex.#ctor(System.Double,System.Double,System.Double,System.Double)">
             <summary>
             Initializes a new instance of the class Delaunay_Voronoi_Library.Vertex with the specified longitude, latitude and value (default equal 0).
             </summary>
@@ -185,7 +185,7 @@
             <param name="latitude">The vertex latitude.</param>
             <param name="value">The vertex value.</param>
         </member>
-        <member name="M:Delaunay_Voronoi_Library.Vertex.#ctor(System.Double[],System.Double)">
+        <member name="M:Delaunay_Voronoi_Library.Vertex.#ctor(System.Double[],System.Double,System.Double)">
             <summary>
             Initializes a new instance of the class Delaunay_Voronoi_Library.Vertex with the specified 3D position, value (default equal 0) excluding longitude and latitude initialization.
             </summary>
