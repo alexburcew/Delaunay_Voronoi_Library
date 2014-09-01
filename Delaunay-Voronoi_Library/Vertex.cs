@@ -11,10 +11,10 @@ namespace Delaunay_Voronoi_Library
 
         #region _fields
 
-        private double value = double.NaN;
-        private double r_max = double.NaN;
-        private double r_kv = double.NaN;
-        private double r_lv = double.NaN;
+        private double crossvalue = double.NaN;
+        private double realvalue = double.NaN;
+        private double Uncertainty = double.NaN;
+        private double sigma = double.NaN;
         private double latitude = double.NaN;
         private double longitude = double.NaN;
         private double[] Position = null;
@@ -30,11 +30,12 @@ namespace Delaunay_Voronoi_Library
         /// <param name="longitude">The vertex longitude.</param>
         /// <param name="latitude">The vertex latitude.</param>
         /// <param name="value">The vertex value.</param>
-        public Vertex(double longitude, double latitude, double value = 0)
+        public Vertex(double longitude, double latitude, double value = 0,double unc =0)
         {
             this.latitude = latitude;
             this.longitude = longitude;
-            this.value = value;
+            this.realvalue = value;
+            this.sigma = unc;
             Position = new double[3];
             Position[0] = Math.Cos(latitude * Math.PI / 180) * Math.Cos(longitude * Math.PI / 180);
             Position[1] = Math.Cos(latitude * Math.PI / 180) * Math.Sin(longitude * Math.PI / 180);
@@ -47,9 +48,10 @@ namespace Delaunay_Voronoi_Library
         /// </summary>
         /// <param name="Position">The vertex position.</param>
         /// <param name="value">The vertex value .</param>
-        public Vertex(double[] Position, double value = 0)
+        public Vertex(double[] Position, double value = 0, double unc =0)
         {
-            this.value = value;
+            this.realvalue = value;
+            this.sigma = unc;
             this.Position = Position;
             adjacent_triangles = new List<triangle>();
         }
@@ -62,7 +64,9 @@ namespace Delaunay_Voronoi_Library
         {
             this.latitude = vertex.latitude;
             this.longitude = vertex.longitude;
-            this.value = vertex.value;
+            this.realvalue = vertex.Value;
+            this.Uncertainty = vertex.Uncertainty;
+            this.sigma = vertex.sigma;
             Position = new double[3];
             Position[0] = vertex.Position[0];
             Position[1] = vertex.Position[1];
@@ -153,47 +157,50 @@ namespace Delaunay_Voronoi_Library
         {
             get
             {
-                return value;
+                return realvalue;
             }
             set
             {
-                this.value = value;
+                this.realvalue = value;
             }
         }
 
-        public double GetR_MAX
+        public double Sigma
         {
             get
             {
-                return r_max;
+                return sigma;
             }
             set
             {
-                r_max = value;
+                this.sigma = value;
             }
         }
-        public double GetR_LV
+
+        public double CrossValue
         {
             get
             {
-                return r_lv;
+                return crossvalue;
             }
             set
             {
-                r_lv = value;
+                this.crossvalue = value;
             }
         }
-        public double GetR_KV
+       
+        public double GetUncertainty
         {
             get
             {
-                return r_kv;
+                return Uncertainty;
             }
             set
             {
-                r_kv = value;
+                Uncertainty = value;
             }
         }
+        
         /// <summary>
         /// Gets or sets the vertex value.
         /// </summary>

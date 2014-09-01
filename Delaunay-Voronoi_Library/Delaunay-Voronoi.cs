@@ -22,6 +22,7 @@ namespace Delaunay_Voronoi_Library
         private List<Vertex> pseuvovert = new List<Vertex>();
         private HashSet<VoronoiCell> pseudopol = new HashSet<VoronoiCell>();
         private List<KeyValuePair<double, double>> apprvariogramm = null;
+        private List<KeyValuePair<double, double>> apprcovariogramm = null;
         #endregion _fields
         
         
@@ -62,6 +63,10 @@ namespace Delaunay_Voronoi_Library
             }
             apprvariogramm = new List<KeyValuePair<double, double>>();
             foreach(var tin in delaunay_voronoi.apprvariogramm) apprvariogramm.Add(new KeyValuePair<double,double>(tin.Key,tin.Value));
+
+            apprcovariogramm = new List<KeyValuePair<double, double>>();
+            foreach (var tin in delaunay_voronoi.apprcovariogramm) apprcovariogramm.Add(new KeyValuePair<double, double>(tin.Key, tin.Value));
+        
         }
         
         /// <summary>
@@ -71,24 +76,28 @@ namespace Delaunay_Voronoi_Library
         /// <param name="Uncertainty">The uncertainty flag </param>
         public Delaunay_Voronoi(List<Vertex> vertices, bool Uncertainty = false)
         {
-            int lenght = vertices.Count, i = 2;
+            int lenght = vertices.Count, i = 0, j = 1, k = 2;
             if (lenght < 4) { Console.WriteLine("слишком мало точек"); return; }
-            double A = 0, B = 0, C = 0;
+            double A = 0;
             Vertex v0 = null, v1 = null, v2 = null;
-            if (lenght > 2)
+            while (true)
             {
-                v0 = vertices[0];
-                v1 = vertices[1];
-                do
-                {
-                    v2 = vertices[i++];
-                    A = (v1.Y - v0.Y) * (v2.Z - v0.Z) - (v1.Z - v0.Z) * (v2.Y - v0.Y);
-                    B = (v1.Z - v0.Z) * (v2.X - v0.X) - (v1.X - v0.X) * (v2.Z - v0.Z);
-                    C = (v1.X - v0.X) * (v2.Y - v0.Y) - (v1.Y - v0.Y) * (v2.X - v0.X);
-                } while (A == 0 && B == 0 && C == 0 && i < lenght);
-            }
+                v0 = vertices[i];
+                v1 = vertices[j];
+                v2 = vertices[k];
 
-            if (A != 0 || B != 0 || C != 0)
+                A = ((v1.Y - v0.Y) * (v2.Z - v0.Z) - (v1.Z - v0.Z) * (v2.Y - v0.Y)) * (-v0.X) +
+                ((v1.X - v0.X) * (v2.Y - v0.Y) - (v1.Y - v0.Y) * (v2.X - v0.X)) * (-v0.Z) +
+                 ((v1.X - v0.X) * (v2.Z - v0.Z) - (v1.Z - v0.Z) * (v2.X - v0.X)) * (-v0.Y);
+
+                if (A != 0) break;
+                k++;
+                if (k == lenght - 1) { j += 1; k = j + 1; }
+                if (j == lenght - 1) { i += 1; j = i + 1; }
+                if (i == lenght - 1) break;
+
+            }
+            if (A != 0)
             {
                 var er = new double[] { v0.X + v1.X + v2.X, v0.Y + v1.Y + v2.Y, v0.Z + v1.Z + v2.Z };
                 var rty = Math.Sqrt(er[0] * er[0] + er[1] * er[1] + er[2] * er[2]);
@@ -106,9 +115,9 @@ namespace Delaunay_Voronoi_Library
                 triangles.Add(new triangle(v0, v2, vini));
                 triangles.Add(new triangle(v1, v2, vini));
 
-                foreach (var j in vertices)
+                foreach (var jr in vertices)
                 {
-                    addnewpoint(j);
+                    addnewpoint(jr);
                 }
                 
                 foreach (var e in vinit)
@@ -121,7 +130,7 @@ namespace Delaunay_Voronoi_Library
                 Voronoi();
 
                 var tu = DateTime.Now;
-                if (Uncertainty == true) createvariogram(this.vertices.ToList(),25);
+                if (Uncertainty == true) createcovariogram(this.vertices.ToList(),13);
                 //Console.WriteLine("Variogram: {0}", DateTime.Now - tu);
             }
         }
@@ -199,10 +208,10 @@ namespace Delaunay_Voronoi_Library
             int count = vertices.Count;
             List<Stack<KeyValuePair<double, double>>> sts = new List<Stack<KeyValuePair<double, double>>>();
             List<KeyValuePair<double, double>> x = new List<KeyValuePair<double, double>>();
-            
+
             var trt = DateTime.Now;
             Stack<KeyValuePair<double, double>> l = new Stack<KeyValuePair<double, double>>();
-            
+
             for (int i = 0; i < count; i++)
             {
                 var y = vertices[i];
@@ -219,7 +228,7 @@ namespace Delaunay_Voronoi_Library
             trt = DateTime.Now;
             x.Add(new KeyValuePair<double, double>(1, 0));
             sts.Add(l);
-            
+
             while (sts.Count < s)
             {
                 int p = sts.Max(a => a.Count);
@@ -250,7 +259,7 @@ namespace Delaunay_Voronoi_Library
             apprvariogramm.Add(new KeyValuePair<double, double>(0, 0));
             for (int i = 0; i < s; i++)
             {
-                double mo = sts[i].Sum(a => a.Value);
+                double mo = sts[i].Sum(a => a.Value) / sts[i].Count;
                 mo = mo * mo / sts[i].Count;
                 double d = (sts[i].Sum(v => v.Value * v.Value) - mo) / (sts[i].Count - 1);
                 apprvariogramm.Add(new KeyValuePair<double, double>(Math.Acos(x[i].Value), d));
@@ -259,6 +268,103 @@ namespace Delaunay_Voronoi_Library
             //Console.WriteLine(DateTime.Now - trt);
         }
 
+        void createcovariogram(List<Vertex> vertices, int s)
+        {
+            apprcovariogramm = new List<KeyValuePair<double, double>>();
+            apprvariogramm = new List<KeyValuePair<double, double>>();
+            int count = vertices.Count;
+            List<Stack<KeyValuePair<double, double>>> sts = new List<Stack<KeyValuePair<double, double>>>();
+            List<KeyValuePair<double, double>> x = new List<KeyValuePair<double, double>>();
+
+            var trt = DateTime.Now;
+            Stack<KeyValuePair<double, double>> l = new Stack<KeyValuePair<double, double>>();
+            for (int i = 0; i < count; i++)
+            {
+                var y = vertices[i];
+                for (int j = i + 1; j < 4000; j++)
+                {
+                    var u = vertices[j];
+                    double d = u.X * y.X + u.Y * y.Y + u.Z * y.Z;
+                    if (d <= 0) continue;
+                    l.Push(new KeyValuePair<double, double>(d, u.Value));
+                    l.Push(new KeyValuePair<double, double>(d, y.Value));
+                }
+                if (l.Count > 16000000) break;
+            }
+            Console.WriteLine(DateTime.Now - trt);
+
+            trt = DateTime.Now;
+            x.Add(new KeyValuePair<double, double>(1, 0));
+            sts.Add(l);
+
+            while (sts.Count < s)
+            {
+                int p = sts.Max(a => a.Count);
+                var q = sts.FindIndex(a => a.Count == p);
+                l = sts[q];
+                var xi = x[q];
+                sts.Remove(l);
+                x.Remove(xi);
+
+                var xis = Math.Cos((Math.Acos(xi.Key) + Math.Acos(xi.Value)) / 2);
+                x.Add(new KeyValuePair<double, double>(xi.Key, xis));
+                x.Add(new KeyValuePair<double, double>(xis, xi.Value));
+
+                var k1 = new Stack<KeyValuePair<double, double>>();
+                var k2 = new Stack<KeyValuePair<double, double>>();
+                sts.Add(k1); sts.Add(k2);
+                Console.WriteLine(sts.Count);
+                for (int i = 0; i < p; i+=2)
+                {
+                    var y = l.Pop();
+                    if (y.Key > xis) { k1.Push(y); k1.Push(l.Pop()); }
+                    else {k2.Push(y); k2.Push(l.Pop()); }
+                }
+            }
+
+            Console.WriteLine(DateTime.Now - trt);
+            trt = DateTime.Now;
+            
+            for (int i = 0; i < s; i++)
+            {
+                int z = sts[i].Count;
+                double p0 = 0, p1 = 0, p2 = 0;
+                double r0 = 0, r1 = 0;
+                double q0 = 0, q1 = 0, q2 = 0;
+                for (int j = 0; j < z; j += 2)
+                {
+                    var t1 = sts[i].Pop();
+                    var t2 = sts[i].Pop();
+                    p0 += t1.Value * t2.Value;
+                    p1 += t1.Value;
+                    p2 += t2.Value;
+                    r0 += t1.Value * t1.Value;
+                    r1 += t2.Value * t2.Value;
+                    q0 = Math.Abs(t1.Value - t2.Value);
+                    q1 += q0 * q0;
+                    q2 += q0;
+                }
+
+                double c = 2.0 * Math.Abs(p0 - 2* p1 * p2/z) / z;
+                double d01 =Math.Sqrt( 2.0 * (r0 - 2.0 * p1 * p1 / z) / (z - 2));
+                double d02 = Math.Sqrt(2.0 * (r1 - 2.0 * p2 * p2 / z) / (z - 2));
+                c = c / d01 / d02;
+                
+                double mo = Math.Sqrt(2.0*(q1- 2.0*q2*q2/z)/(z-2));
+                apprvariogramm.Add(new KeyValuePair<double, double>(Math.Acos(x[i].Value), mo));
+                apprcovariogramm.Add(new KeyValuePair<double, double>(Math.Acos(x[i].Value), c));
+            }
+            
+            apprcovariogramm = apprcovariogramm.OrderByDescending(a => a.Key).ToList();
+            apprvariogramm = apprvariogramm.OrderByDescending(a => a.Key).ToList();
+            apprvariogramm.Add(new KeyValuePair<double, double>(0, apprvariogramm[apprvariogramm.Count-1].Value));
+            apprcovariogramm.Add(new KeyValuePair<double, double>(0, apprcovariogramm[apprcovariogramm.Count - 1].Value));
+            apprcovariogramm = apprcovariogramm.OrderBy(a => a.Key).ToList();
+            apprvariogramm = apprvariogramm.OrderBy(a => a.Key).ToList();
+
+            Console.WriteLine(DateTime.Now - trt);
+        }
+        
         int addnewpoint(Vertex x, bool p = true)
         {
             foreach (var w in vinit.Where(a => Math.Abs(x.X - a.X) < 0.0000001 && Math.Abs(x.Y - a.Y) < 0.0000001 && Math.Abs(x.Z - a.Z) < 0.0000001))
@@ -539,7 +645,104 @@ namespace Delaunay_Voronoi_Library
 
             return true;
         }
+        
+        void DeletePoint3(Vertex v, bool p)
+        {
+            List<Edge> edges = new List<Edge>();
+            List<Vertex> verts = new List<Vertex>();
+            List<triangle> triangls = new List<triangle>();
 
+            vertices.Remove(v);
+            foreach (var a in v.GetAdjacentTriangles)
+            {
+                triangls.Add(a);
+                a.GetVertices.Remove(v);
+                foreach (var q0 in a.GetVertices) q0.GetAdjacentTriangles.Remove(a);
+                edges.Add(new Edge(a.GetVertices[0], a.GetVertices[1]));
+                foreach (var l in a.GetVertices) if (!verts.Contains(l)) verts.Add(l);
+            }
+
+            v.GetAdjacentTriangles.Clear();
+
+            pseuvovert = new List<Vertex>(verts);
+            foreach (var r in triangls)
+                triangles.Remove(r);
+
+            triangls.Clear();
+
+            Vertex v1 = verts[0],
+                   v2 = edges.First(a => a.GetVertexes.Contains(v1)).GetVertexes.Single(b => b != v1),
+                   v3 = edges.Single(a => (a.GetVertexes.Contains(v2)) && (!a.GetVertexes.Contains(v1))).GetVertexes.Single(b => b != v2);
+
+            while (verts.Count > 3)
+            {
+                triangle t1 = new triangle(v1, v2, v3, true);
+                bool y = true;
+                foreach (var v4 in vertices)
+                {
+                    int c = Math.Sign(t1.SignVertex(v4));
+                    if ((c != 0) && (c != t1.GetSignCenter))
+                    {
+                        y = false;
+                        break;
+                    }
+                }
+
+                if (y == true)
+                {
+                    var g = new triangle(v1, v3, new Vertex(new double[] { 0, 0, 0 }), false);
+                    if (Math.Sign(g.SignVertex(v2)) == Math.Sign(g.SignVertex(v)))
+                    {
+                        t1.deltr();
+                        v1 = v2;
+                        v2 = v3;
+                        v3 = edges.Single(a => (a.GetVertexes.Contains(v2)) && (!a.GetVertexes.Contains(v1))).GetVertexes.Single(b => b != v2);
+
+                    }
+                    else
+                    {
+                        verts.Remove(v2);
+                        edges.RemoveAll(a => a.GetVertexes.Contains(v2));
+                        edges.Add(new Edge(v1, v3));
+                        triangles.Add(t1);
+                        v2 = v3;
+                        v3 = edges.Single(a => (a.GetVertexes.Contains(v2)) && (!a.GetVertexes.Contains(v1))).GetVertexes.Single(b => b != v2);
+                    }
+                }
+
+                if (y == false)
+                {
+                    t1.deltr();
+                    v1 = v2;
+                    v2 = v3;
+                    v3 = edges.Single(a => (a.GetVertexes.Contains(v2)) && (!a.GetVertexes.Contains(v1))).GetVertexes.Single(b => b != v2);
+                }
+            }
+            var fgh = new triangle(verts[0], verts[1], verts[2], true);
+            triangles.Add(fgh);
+        }
+        
+        void crossdel(List<Vertex> vx)
+        {
+            pseudopol.Clear();
+            foreach (var q in vx)
+            {
+
+                triangle t = q.GetAdjacentTriangles[0];
+                Vertex y = t.GetVertices.First(a => a != q);
+                Vertex y0;
+                List<Vertex> j = new List<Vertex>();
+                for (int i = 0; i < q.GetAdjacentTriangles.Count; i++)
+                {
+                    j.Add(t.GetOR);
+                    y0 = y;
+                    y = t.GetVertices.Single(a => (a != y) && (a != q));
+                    t = q.GetAdjacentTriangles.Single(a => a.GetVertices.Contains(y) && (!a.GetVertices.Contains(y0)));
+                }
+                VoronoiCell p = new VoronoiCell(q, j);
+                pseudopol.Add(p);
+            }
+        }
         void NatNearestInterpolation(Vertex vert, bool ExceptNaN, bool Uncertainty = false)
         {
             List<Vertex> lv = new List<Vertex>();
@@ -600,7 +803,7 @@ namespace Delaunay_Voronoi_Library
 
             if (Uncertainty == true)
             {
-                double kdel = 0.0, ldel = 0.0, mdel = 0.0;
+                double kt = 0.0, lt = 0.0, mt = 0.0;
                 foreach (var t in dict)
                 {
                     var r = Math.Acos(t.Key.X * vert.X + t.Key.Y * vert.Y + t.Key.Z * vert.Z);
@@ -612,13 +815,10 @@ namespace Delaunay_Voronoi_Library
                         x = apprvariogramm[i].Key;
                     }
                     while (x < r);
-                    mdel = Math.Max(mdel, Math.Sqrt(((apprvariogramm[i].Value - apprvariogramm[i - 1].Value) * r + apprvariogramm[i - 1].Value * apprvariogramm[i].Key - apprvariogramm[i].Value * apprvariogramm[i - 1].Key) / (apprvariogramm[i].Key - apprvariogramm[i - 1].Key)));
-                    ldel += t.Value * Math.Sqrt(((apprvariogramm[i].Value - apprvariogramm[i - 1].Value) * r + apprvariogramm[i - 1].Value * apprvariogramm[i].Key - apprvariogramm[i].Value * apprvariogramm[i - 1].Key) / (apprvariogramm[i].Key - apprvariogramm[i - 1].Key)) / sq;
-                    kdel += Math.Pow(t.Value * Math.Sqrt(((apprvariogramm[i].Value - apprvariogramm[i - 1].Value) * r + apprvariogramm[i - 1].Value * apprvariogramm[i].Key - apprvariogramm[i].Value * apprvariogramm[i - 1].Key) / (apprvariogramm[i].Key - apprvariogramm[i - 1].Key)) / sq, 2);
-                }
-                vert.GetR_KV = Math.Sqrt(kdel);
-                vert.GetR_LV = ldel;
-                vert.GetR_MAX = mdel;
+                    kt = ((apprcovariogramm[i].Value - apprcovariogramm[i - 1].Value) * r + apprcovariogramm[i - 1].Value * apprcovariogramm[i].Key - apprcovariogramm[i].Value * apprcovariogramm[i - 1].Key) / (apprcovariogramm[i].Key - apprcovariogramm[i - 1].Key);
+                    lt += t.Value / sq * t.Key.Sigma * (kt + Math.Sqrt(kt * kt + Math.Sqrt(((apprvariogramm[i].Value - apprvariogramm[i - 1].Value) * r + apprvariogramm[i - 1].Value * apprvariogramm[i].Key - apprvariogramm[i].Value * apprvariogramm[i - 1].Key) / (apprvariogramm[i].Key - apprvariogramm[i - 1].Key)) / t.Key.Sigma / t.Key.Sigma - 1));
+                   }
+                
             }
 
             foreach (var n in newtriangles)
@@ -725,6 +925,57 @@ namespace Delaunay_Voronoi_Library
             Vertex w = new Vertex(longitude, latitude);
             NatNearestInterpolation(w, ExceptNaN, Uncertainty);
             return w;
+        }
+
+        public HashSet<Vertex> crossadd(bool Uncertainty)
+        {
+            var rw = new HashSet<Vertex>(vertices);
+            foreach (var ry in rw)
+            {
+                ry.CrossValue = ry.Value;
+                DeletePoint3(ry, false);
+                crossdel(pseuvovert);
+                ry.Value = 0;
+                double sq = 0;
+                Dictionary<Vertex, double> dict = new Dictionary<Vertex, double>();
+                foreach (var q in pseuvovert)
+                {
+                    if ((!true) || (true && !double.IsNaN(q.Value)))
+                    {
+                        double sqss = q.Voronoi_Cell.GetSquare;
+                        double sqs = pseudopol.Single(a => a.GetCellCentr == q).GetSquare;
+                        double delta = sqss - sqs;
+                        ry.Value += delta * q.Value;
+                        sq += delta;
+                        dict.Add(q, delta);
+                    }
+                }
+                ry.Value /= sq;
+
+                if (Uncertainty == true)
+                {
+                    double kt = 0.0, lt = 0.0, mt = 0.0;
+                    foreach (var t in dict)
+                    {
+                        var r = Math.Acos(t.Key.X * ry.X + t.Key.Y * ry.Y + t.Key.Z *ry.Z);
+                        var x = 0.0;
+                        int i = -1;
+                        do
+                        {
+                            i++;
+                            x = apprvariogramm[i].Key;
+                        }
+                        while (x < r);
+                        mt = Math.Sqrt(((apprvariogramm[i+1].Value - apprvariogramm[i].Value) * r + apprvariogramm[i].Value * apprvariogramm[i+1].Key - apprvariogramm[i+1].Value * apprvariogramm[i].Key) / (apprvariogramm[i+1].Key - apprvariogramm[i].Key));
+                        kt = ((apprcovariogramm[i+1].Value - apprcovariogramm[i].Value) * r + apprcovariogramm[i].Value * apprcovariogramm[i+1].Key - apprcovariogramm[i+1].Value * apprcovariogramm[i].Key) / (apprcovariogramm[i+1].Key - apprcovariogramm[i].Key);
+                        lt += t.Value / sq * t.Key.Sigma * (kt + Math.Sqrt(kt * kt + mt / t.Key.Sigma / t.Key.Sigma - 1));
+                    }
+                    ry.GetUncertainty = lt;
+                }
+
+                addnewpoint(ry, true);
+            }
+            return vertices;        
         }
         #endregion _public_methods
 

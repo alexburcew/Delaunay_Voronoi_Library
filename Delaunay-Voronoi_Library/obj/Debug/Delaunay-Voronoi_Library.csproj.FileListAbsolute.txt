@@ -16,3 +16,9 @@ C:\Users\Alexandr.Burtsev\Documents\Visual Studio 2012\Projects\Delaunay_Voronoi
 C:\Users\Alexandr.Burtsev\Documents\Visual Studio 2012\Projects\Delaunay_Voronoi_Library\Delaunay-Voronoi_Library\obj\Debug\Delaunay-Voronoi_Library.csprojResolveAssemblyReference.cache
 C:\Users\Alexandr.Burtsev\Documents\Visual Studio 2012\Projects\Delaunay_Voronoi_Library\Delaunay-Voronoi_Library\obj\Debug\Delaunay-Voronoi_Library.dll
 C:\Users\Alexandr.Burtsev\Documents\Visual Studio 2012\Projects\Delaunay_Voronoi_Library\Delaunay-Voronoi_Library\obj\Debug\Delaunay-Voronoi_Library.pdb
+C:\Users\Alexandr.Burtsev\Documents\Visual Studio 2012\Projects\cross\Delaunay_Voronoi_Library\Delaunay-Voronoi_Library\bin\Debug\Delaunay-Voronoi_Library.XML
+C:\Users\Alexandr.Burtsev\Documents\Visual Studio 2012\Projects\cross\Delaunay_Voronoi_Library\Delaunay-Voronoi_Library\bin\Debug\Delaunay-Voronoi_Library.dll
+C:\Users\Alexandr.Burtsev\Documents\Visual Studio 2012\Projects\cross\Delaunay_Voronoi_Library\Delaunay-Voronoi_Library\bin\Debug\Delaunay-Voronoi_Library.pdb
+C:\Users\Alexandr.Burtsev\Documents\Visual Studio 2012\Projects\cross\Delaunay_Voronoi_Library\Delaunay-Voronoi_Library\obj\Debug\Delaunay-Voronoi_Library.dll
+C:\Users\Alexandr.Burtsev\Documents\Visual Studio 2012\Projects\cross\Delaunay_Voronoi_Library\Delaunay-Voronoi_Library\obj\Debug\Delaunay-Voronoi_Library.pdb
+C:\Users\Alexandr.Burtsev\Documents\Visual Studio 2012\Projects\cross\Delaunay_Voronoi_Library\Delaunay-Voronoi_Library\obj\Debug\Delaunay-Voronoi_Library.csprojResolveAssemblyReference.cache
