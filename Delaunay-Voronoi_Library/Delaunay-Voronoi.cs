@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -13,8 +14,12 @@ namespace Delaunay_Voronoi_Library
 
         #region _fields
 
-        private List<Vertex> vinit = new List<Vertex>();
-        public HashSet<Vertex> vertices = new HashSet<Vertex>();
+        public static TraceSource traceSource = new TraceSource("Delaunay_Voronoi library", SourceLevels.All);
+
+
+        private List<Vertex> vinit = new List<Vertex>(); // a list of "dummy" "good positioned" NaN containing vertices to bootstrap the delaunay triangulation assembling?
+        public Vertex[] Vertices;
+        private HashSet<Vertex> vertices = new HashSet<Vertex>();
         private HashSet<triangle> triangles = new HashSet<triangle>();
         private List<VoronoiCell> pol = new List<VoronoiCell>();
         private HashSet<triangle> newtriangles = new HashSet<triangle>();
@@ -34,7 +39,8 @@ namespace Delaunay_Voronoi_Library
         public Delaunay_Voronoi(Delaunay_Voronoi delaunay_voronoi)
         {
             Dictionary<Vertex, Vertex> dictionary_parallel_copy = new Dictionary<Vertex, Vertex>();
-           
+            Vertices = delaunay_voronoi.Vertices;
+                
             foreach (var w in delaunay_voronoi.GetVertices)
             {
                 Vertex parallel_copy = new Vertex(w);
@@ -77,7 +83,8 @@ namespace Delaunay_Voronoi_Library
         public Delaunay_Voronoi(List<Vertex> vertices, bool Uncertainty = false)
         {
             int lenght = vertices.Count, i = 0, j = 1, k = 2;
-            if (lenght < 4) { Console.WriteLine("слишком мало точек"); return; }
+            if (lenght < 4) { traceSource.TraceEvent(TraceEventType.Critical,1,"Too few points. Less then 4"); return; }
+            Vertices = vertices.ToArray();
             double A = 0;
             Vertex v0 = null, v1 = null, v2 = null;
             while (true)
@@ -90,14 +97,14 @@ namespace Delaunay_Voronoi_Library
                 ((v1.X - v0.X) * (v2.Y - v0.Y) - (v1.Y - v0.Y) * (v2.X - v0.X)) * (-v0.Z) +
                  ((v1.X - v0.X) * (v2.Z - v0.Z) - (v1.Z - v0.Z) * (v2.X - v0.X)) * (-v0.Y);
 
-                if (A != 0) break;
+                if (A != 0) break; //belong to the same great-circle??
                 k++;
-                if (k == lenght - 1) { j += 1; k = j + 1; }
+                if (k == lenght - 1) { j += 1; k = j + 1; } //this is "for loop in for loop in for loop!!!"
                 if (j == lenght - 1) { i += 1; j = i + 1; }
                 if (i == lenght - 1) break;
 
             }
-            if (A != 0)
+            if (A != 0) //v0, v1 and v2 are not at the great circle
             {
                 var er = new double[] { v0.X + v1.X + v2.X, v0.Y + v1.Y + v2.Y, v0.Z + v1.Z + v2.Z };
                 var rty = Math.Sqrt(er[0] * er[0] + er[1] * er[1] + er[2] * er[2]);
@@ -122,7 +129,7 @@ namespace Delaunay_Voronoi_Library
                 
                 foreach (var e in vinit)
                 {
-                    if (TryDeletePoint(e) == false) Console.WriteLine("Невозможно удалить точку...к сожалению...");
+                    if (TryDeletePoint(e) == false) traceSource.TraceEvent(TraceEventType.Warning,2,"Can't remove one of the bootstrap points");
                 }
 
                 vinit.Clear();
@@ -223,8 +230,8 @@ namespace Delaunay_Voronoi_Library
                     l.Push(new KeyValuePair<double, double>(d, Math.Abs(u.Value - y.Value)));
                 }
             }
-            //Console.WriteLine(DateTime.Now-trt);
-            
+            //Console.WriteLine(DateTime.Now - trt);
+
             trt = DateTime.Now;
             x.Add(new KeyValuePair<double, double>(1, 0));
             sts.Add(l);
@@ -253,6 +260,8 @@ namespace Delaunay_Voronoi_Library
                     else k2.Push(y);
                 }
             }
+
+
 
             //Console.WriteLine(DateTime.Now - trt);
             trt = DateTime.Now;
@@ -291,7 +300,7 @@ namespace Delaunay_Voronoi_Library
                 }
                 if (l.Count > 16000000) break;
             }
-            Console.WriteLine(DateTime.Now - trt);
+            //Console.WriteLine(DateTime.Now - trt);
 
             trt = DateTime.Now;
             x.Add(new KeyValuePair<double, double>(1, 0));
@@ -313,7 +322,7 @@ namespace Delaunay_Voronoi_Library
                 var k1 = new Stack<KeyValuePair<double, double>>();
                 var k2 = new Stack<KeyValuePair<double, double>>();
                 sts.Add(k1); sts.Add(k2);
-                Console.WriteLine(sts.Count);
+                //Console.WriteLine(sts.Count);
                 for (int i = 0; i < p; i+=2)
                 {
                     var y = l.Pop();
@@ -322,7 +331,7 @@ namespace Delaunay_Voronoi_Library
                 }
             }
 
-            Console.WriteLine(DateTime.Now - trt);
+            //Console.WriteLine(DateTime.Now - trt);
             trt = DateTime.Now;
             
             for (int i = 0; i < s; i++)
@@ -362,12 +371,12 @@ namespace Delaunay_Voronoi_Library
             apprcovariogramm = apprcovariogramm.OrderBy(a => a.Key).ToList();
             apprvariogramm = apprvariogramm.OrderBy(a => a.Key).ToList();
 
-            Console.WriteLine(DateTime.Now - trt);
+            //Console.WriteLine(DateTime.Now - trt);
         }
         
-        int addnewpoint(Vertex x, bool p = true)
+        int addnewpoint(Vertex x, bool isPermanentAdd = true)
         {
-            foreach (var w in vinit.Where(a => Math.Abs(x.X - a.X) < 0.0000001 && Math.Abs(x.Y - a.Y) < 0.0000001 && Math.Abs(x.Z - a.Z) < 0.0000001))
+            foreach (var w in vinit.Where(a => Math.Abs(x.X - a.X) < 0.0000001 && Math.Abs(x.Y - a.Y) < 0.0000001 && Math.Abs(x.Z - a.Z) < 0.0000001)) //making "dummy" bootstrap vertex a real useful vertex if needed
             {
                 w.SetNewPosition(x.Longitude, x.Latitude);
                 w.Value = x.Value;
@@ -378,12 +387,12 @@ namespace Delaunay_Voronoi_Library
             if (vertices.Count > 0)
             {
                 var tm = vertices.ElementAt(0);
-                double dis = (tm.X - x.X) * (tm.X - x.X) + (tm.Y - x.Y) * (tm.Y - x.Y) + (tm.Z - x.Z) * (tm.Z - x.Z), dis0 = 0;
+                double dis = (tm.X - x.X) * (tm.X - x.X) + (tm.Y - x.Y) * (tm.Y - x.Y) + (tm.Z - x.Z) * (tm.Z - x.Z), dis0 = 0; //tracking distance to closest point
                 Vertex ind0 = tm;
                 do
                 {
                     tm = ind0;
-                    foreach (var er in tm.GetAdjacentTriangles)
+                    foreach (var er in tm.GetAdjacentTriangles) //looking through closest point by jumping along triangles towards minimazation of distance?
                     {
                         foreach (var t in er.GetVertices)
                         {
@@ -399,12 +408,12 @@ namespace Delaunay_Voronoi_Library
 
                 if (dis < 0.0000000001)
                 {
-                    if (p == false)
+                    if (isPermanentAdd == false)
                     {
                         x.Value = ind0.Value;
+                        x.DataIndex = ind0.DataIndex;
                     }
-                    else { //Console.WriteLine("Warning: SingularPoint");
-                    }
+                    else { traceSource.TraceEvent(TraceEventType.Error,4,"Duplicate Vertex in the initial vertex sequence. Using first one, discarding later duplicates vertex values"); }
                     return -1;
                 }
             }
@@ -489,7 +498,7 @@ namespace Delaunay_Voronoi_Library
 
             anymore(m, l, x);
 
-            if (p == false)
+            if (isPermanentAdd == false)
             {
                 foreach (var d in m)
                     pseuvotr.Add(new triangle(d.GetVertices[0], d.GetVertices[1], d.GetVertices[2], false));
@@ -517,7 +526,7 @@ namespace Delaunay_Voronoi_Library
             foreach (var q in b)
             {
                 var tem = new triangle(x, q.GetVertexes[0], q.GetVertexes[1]);
-                if (p == false) newtriangles.Add(tem);
+                if (isPermanentAdd == false) newtriangles.Add(tem);
                 triangles.Add(tem);
             }
 
@@ -743,7 +752,7 @@ namespace Delaunay_Voronoi_Library
                 pseudopol.Add(p);
             }
         }
-        void NatNearestInterpolation(Vertex vert, bool ExceptNaN, bool Uncertainty = false)
+        Tuple<int,double>[] NatNearestInterpolation(Vertex vert, bool ExceptNaN, bool Uncertainty = false)
         {
             List<Vertex> lv = new List<Vertex>();
             if (apprvariogramm == null) Uncertainty = false;
@@ -751,8 +760,11 @@ namespace Delaunay_Voronoi_Library
             pseuvotr.Clear();
             pseuvovert.Clear();
             newtriangles.Clear();
-            
-            if (addnewpoint(vert, false) == -1) return;
+
+            if (addnewpoint(vert, false) == -1) //exact match to one of the initial nodes
+            {
+                return new Tuple<int,double>[] { Tuple.Create(vert.DataIndex,1.0) };
+            }
             
             foreach (var e1 in pseuvotr)
                 foreach (var e2 in e1.GetVertices)
@@ -781,25 +793,21 @@ namespace Delaunay_Voronoi_Library
 
             double sq = 0;
             Dictionary<Vertex, double> dict = new Dictionary<Vertex, double>();
-
-            List<Tuple<Vertex, double>> lambdas = new List<Tuple<Vertex, double>>();
-
+            Dictionary<Vertex, double> deltas = new Dictionary<Vertex, double>();
             foreach (var q in lv)
             {
                 if ((!ExceptNaN) || (ExceptNaN && !double.IsNaN(q.Value)))
                 {
                     double sqss = q.Voronoi_Cell.GetSquare;
                     double sqs = pseudopol.Single(a => a.GetCellCentr == q).GetSquare;
-                    double delta = Math.Max(0.0,sqss - sqs);
+                    double delta = sqss - sqs;
+                    deltas.Add(q, delta);
                     vert.Value += delta * q.Value;
                     sq += delta;
                     dict.Add(q, delta);
-                    lambdas.Add(Tuple.Create(q, delta));
                 }
             }
             vert.Value /= sq;
-
-            vert.LambdasArray = lambdas.Select(a => Tuple.Create(a.Item1,a.Item2/sq)).ToArray();
 
             if (Uncertainty == true)
             {
@@ -832,6 +840,8 @@ namespace Delaunay_Voronoi_Library
                 triangles.Add(tem);
             }
             vertices.Remove(vert);
+
+            return deltas.Select(entry => Tuple.Create(entry.Key.DataIndex, entry.Value / sq)).ToArray();
         }
 
         #endregion _private_methods
@@ -867,7 +877,7 @@ namespace Delaunay_Voronoi_Library
                 dvm[0] = this;
                 for (int i = 1; i < pc; i++)
                     dvm[i] = new Delaunay_Voronoi(this);
-                //Console.WriteLine("Copy {0}", DateTime.Now - c);
+                traceSource.TraceEvent(TraceEventType.Information,3,"Copy {0}", DateTime.Now - c);
 
                 int[] h = new Int32[pc + 1];
                 h[0] = 0;
@@ -920,63 +930,13 @@ namespace Delaunay_Voronoi_Library
         /// <param name="latitude">The latitude.</param>
         /// <param name="ExceptNaN">Except NaN points </param>
         /// <param name="Uncertainty">The uncertainty flag </param>
-        public Vertex NatNearestInterpolation(double longitude, double latitude, bool ExceptNaN = true, bool Uncertainty = false)
+        public Tuple<int,double>[] NatNearestInterpolation(double longitude, double latitude, bool ExceptNaN = true, bool Uncertainty = false)
         {
             Vertex w = new Vertex(longitude, latitude);
-            NatNearestInterpolation(w, ExceptNaN, Uncertainty);
-            return w;
+            var res = NatNearestInterpolation(w, ExceptNaN, Uncertainty);
+            return res;
         }
-
-        public HashSet<Vertex> crossadd(bool Uncertainty)
-        {
-            var rw = new HashSet<Vertex>(vertices);
-            foreach (var ry in rw)
-            {
-                ry.CrossValue = ry.Value;
-                DeletePoint3(ry, false);
-                crossdel(pseuvovert);
-                ry.Value = 0;
-                double sq = 0;
-                Dictionary<Vertex, double> dict = new Dictionary<Vertex, double>();
-                foreach (var q in pseuvovert)
-                {
-                    if ((!true) || (true && !double.IsNaN(q.Value)))
-                    {
-                        double sqss = q.Voronoi_Cell.GetSquare;
-                        double sqs = pseudopol.Single(a => a.GetCellCentr == q).GetSquare;
-                        double delta = sqss - sqs;
-                        ry.Value += delta * q.Value;
-                        sq += delta;
-                        dict.Add(q, delta);
-                    }
-                }
-                ry.Value /= sq;
-
-                if (Uncertainty == true)
-                {
-                    double kt = 0.0, lt = 0.0, mt = 0.0;
-                    foreach (var t in dict)
-                    {
-                        var r = Math.Acos(t.Key.X * ry.X + t.Key.Y * ry.Y + t.Key.Z *ry.Z);
-                        var x = 0.0;
-                        int i = -1;
-                        do
-                        {
-                            i++;
-                            x = apprvariogramm[i].Key;
-                        }
-                        while (x < r);
-                        mt = Math.Sqrt(((apprvariogramm[i+1].Value - apprvariogramm[i].Value) * r + apprvariogramm[i].Value * apprvariogramm[i+1].Key - apprvariogramm[i+1].Value * apprvariogramm[i].Key) / (apprvariogramm[i+1].Key - apprvariogramm[i].Key));
-                        kt = ((apprcovariogramm[i+1].Value - apprcovariogramm[i].Value) * r + apprcovariogramm[i].Value * apprcovariogramm[i+1].Key - apprcovariogramm[i+1].Value * apprcovariogramm[i].Key) / (apprcovariogramm[i+1].Key - apprcovariogramm[i].Key);
-                        lt += t.Value / sq * t.Key.Sigma * (kt + Math.Sqrt(kt * kt + mt / t.Key.Sigma / t.Key.Sigma - 1));
-                    }
-                    ry.GetUncertainty = lt;
-                }
-
-                addnewpoint(ry, true);
-            }
-            return vertices;        
-        }
+      
         #endregion _public_methods
 
     }

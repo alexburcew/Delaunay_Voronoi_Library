@@ -11,6 +11,7 @@ namespace Delaunay_Voronoi_Library
 
         #region _fields
 
+        private int dataIndex = -1;
         private double crossvalue = double.NaN;
         private double realvalue = double.NaN;
         private double Uncertainty = double.NaN;
@@ -30,7 +31,7 @@ namespace Delaunay_Voronoi_Library
         /// <param name="longitude">The vertex longitude.</param>
         /// <param name="latitude">The vertex latitude.</param>
         /// <param name="value">The vertex value.</param>
-        public Vertex(double longitude, double latitude, double value = 0,double unc =0)
+        public Vertex(double longitude, double latitude, double value = 0, double unc =0,int dataIndex = -1)
         {
             this.latitude = latitude;
             this.longitude = longitude;
@@ -40,6 +41,7 @@ namespace Delaunay_Voronoi_Library
             Position[0] = Math.Cos(latitude * Math.PI / 180) * Math.Cos(longitude * Math.PI / 180);
             Position[1] = Math.Cos(latitude * Math.PI / 180) * Math.Sin(longitude * Math.PI / 180);
             Position[2] = Math.Sin(latitude * Math.PI / 180);
+            this.dataIndex = dataIndex;
             adjacent_triangles = new List<triangle>();
         }
 
@@ -48,11 +50,12 @@ namespace Delaunay_Voronoi_Library
         /// </summary>
         /// <param name="Position">The vertex position.</param>
         /// <param name="value">The vertex value .</param>
-        public Vertex(double[] Position, double value = 0, double unc =0)
+        public Vertex(double[] Position, double value = 0, double unc = 0, int dataIndex = -1)
         {
             this.realvalue = value;
             this.sigma = unc;
             this.Position = Position;
+            this.dataIndex = dataIndex;
             adjacent_triangles = new List<triangle>();
         }
 
@@ -71,6 +74,7 @@ namespace Delaunay_Voronoi_Library
             Position[0] = vertex.Position[0];
             Position[1] = vertex.Position[1];
             Position[2] = vertex.Position[2];
+            this.dataIndex = vertex.dataIndex;
             adjacent_triangles = new List<triangle>();
         }
 
@@ -200,7 +204,9 @@ namespace Delaunay_Voronoi_Library
                 Uncertainty = value;
             }
         }
-        
+
+        public int DataIndex { get { return dataIndex; } set {dataIndex = value;} }
+
         /// <summary>
         /// Gets or sets the vertex value.
         /// </summary>
@@ -238,6 +244,5 @@ namespace Delaunay_Voronoi_Library
         }
         #endregion _public_methods
 
-        public Tuple<Vertex, double>[] LambdasArray = null;
     }
 }
