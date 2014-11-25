@@ -72,8 +72,8 @@ let main argv =
 
     let hashTable = Hash_tbl<Vertex,float>(vertex_comarer)
     let vertices = [| for j in 0..N-1 do yield Vertex(lons.[j],lats.[j],ref_vals.[j]) |]
-    for j in 0..N-1 do hashTable.Add(vertices.[j],ref_sigmas.[j])
-    
+    for j in 0..N-1 do hashTable.Add(vertices.[j],ref_sigmas.[j])       
+
     assert(hashTable.Count = N)
 
     let cov_0 = 22.0*22.0+covariogram(0.0)
@@ -96,8 +96,10 @@ let main argv =
         let precomp = Delaunay_Voronoi_Library.Delaunay_Voronoi(System.Collections.Generic.List(vertices),false)            
         let res = precomp.NatNearestInterpolation(lons.[i],lats.[i],false,false)
         
-        let lambdas = Array.map snd res.LambdasArray
-        let verts = Array.map fst res.LambdasArray
+        let targetVertex = new Vertex(lons.[i],lats.[i],0.0,0.0,-1)
+
+        let lambdas = Array.map snd res
+        let verts = Array.map (fun x -> vertices.[fst x]) res
         let m = verts.Length
                 
         assert_ext (let b = Array.sum lambdas in abs(b-1.0)<=1e-10) "lambdas not normalized"
@@ -114,7 +116,7 @@ let main argv =
                         //if i<>j then
                         //else                            
                         //     hashTable.[verts.[i]]
-                let cov2 = covariogram(dist verts.[i] res)
+                let cov2 = covariogram(dist verts.[i] targetVertex)
                 assert(cov2>=0.0  && cov2<1040.0)
                 acc2 <- acc2 + lambdas.[i]*cov2
             sqrt(cov_0 + acc + (-2.0*acc2))

@@ -1,5 +1,4 @@
-﻿using Microsoft.Research.Science.FetchClimate2;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -17,7 +16,7 @@ namespace Delaunay_Voronoi_Library
 
         #region _fields
 
-        public static AutoRegistratingTraceSource traceSource = new AutoRegistratingTraceSource("Delaunay_Voronoi library", SourceLevels.All);
+        public static TraceSource traceSource = new TraceSource("Delaunay_Voronoi library", SourceLevels.All);
 
 
         private List<Vertex> vinit = new List<Vertex>(); // a list of "dummy" "good positioned" NaN containing vertices to bootstrap the delaunay triangulation assembling?
