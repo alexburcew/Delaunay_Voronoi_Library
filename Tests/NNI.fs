@@ -18,7 +18,7 @@ type UnitTest() =
                 new Vertex(0.0,90.0,15.0);
                 new Vertex(0.0,-90.0,18.0)
             |]
-        new Delaunay_Voronoi(new Collections.Generic.List<Vertex>(vertices),false) |> ignore
+        new Delaunay_Voronoi(new Collections.Generic.List<Vertex>(vertices)) |> ignore
 
     [<TestMethod>]
     member x.TestEqualAreasNNI () = 
@@ -33,7 +33,23 @@ type UnitTest() =
             |]
         let extractValue idx =
             vertices.[idx].Value
-        let voronoi = new Delaunay_Voronoi(new Collections.Generic.List<Vertex>(vertices),false);
+        let voronoi = new Delaunay_Voronoi(new Collections.Generic.List<Vertex>(vertices));
         let lat = Math.Asin(1.0/sqrt(3.0))*180.0/Math.PI
         let res = voronoi.NatNearestInterpolation(45.0,lat,false,false)
         Assert.AreEqual(8.0, Array.fold (fun state t -> let idx,w = t in state+w*(extractValue idx)) 0.0 res,1e-13)
+
+    [<TestMethod>]
+    member x.TestSimpleGrid () = 
+        let vertices = 
+            [|
+                new Vertex(5.0,40.0,1.0,0.0,0);
+                new Vertex(30.0,40.0,2.0,0.0,1);
+                new Vertex(5.0,50.0,3.0,0.0,2);
+                new Vertex(30.0,50.0,4.0,0.0,3);                
+            |]
+        let extractValue idx =
+            vertices.[idx].Value
+        let voronoi = new Delaunay_Voronoi(new Collections.Generic.List<Vertex>(vertices));        
+        let res = voronoi.NatNearestInterpolation(10.0,45.0,false,false)
+        let resVal = Array.fold (fun state t -> let idx,w = t in state+w*(extractValue idx)) 0.0 res        
+        Assert.IsFalse (Double.IsNaN(resVal))

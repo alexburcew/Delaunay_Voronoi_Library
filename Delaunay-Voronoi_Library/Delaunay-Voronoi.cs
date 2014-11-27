@@ -23,7 +23,7 @@ namespace Delaunay_Voronoi_Library
         public Vertex[] Vertices;
         private HashSet<Vertex> vertices = new HashSet<Vertex>();
         private HashSet<triangle> triangles = new HashSet<triangle>();
-        private List<VoronoiCell> pol = new List<VoronoiCell>();
+        private List<VoronoiCell> voronoiCells = new List<VoronoiCell>();
         private HashSet<triangle> newtriangles = new HashSet<triangle>();
         private List<triangle> pseuvotr = new List<triangle>();
         private List<Vertex> pseuvovert = new List<Vertex>();
@@ -64,13 +64,13 @@ namespace Delaunay_Voronoi_Library
                 this.triangles.Add(new triangle(vertex1, vertex2, vertex3));
             }
 
-            foreach (var w in delaunay_voronoi.pol)
+            foreach (var w in delaunay_voronoi.voronoiCells)
             {
                 Vertex vertex;
                 dictionary_parallel_copy.TryGetValue(w.GetCellCentr, out vertex);
                 VoronoiCell newvc = new VoronoiCell(w, vertex);
                 vertex.Voronoi_Cell = newvc;
-                pol.Add(newvc);
+                voronoiCells.Add(newvc);
             }
             if (delaunay_voronoi.apprvariogramm != null)
             {
@@ -88,7 +88,7 @@ namespace Delaunay_Voronoi_Library
         /// </summary>
         /// <param name="vertices">The vertices list.</param>
         /// <param name="Uncertainty">The uncertainty flag </param>
-        public Delaunay_Voronoi(List<Vertex> vertices, bool Uncertainty = false)
+        public Delaunay_Voronoi(List<Vertex> vertices)
         {
             int lenght = vertices.Count, i = 0, j = 1, k = 2;
             if (lenght < 4) { traceSource.TraceEvent(TraceEventType.Critical, 1, "Too few points. Less then 4"); return; }
@@ -114,16 +114,16 @@ namespace Delaunay_Voronoi_Library
             }
             if (A != 0) //v0, v1 and v2 are not at the great circle
             {
-                var er = new double[] { v0.X + v1.X + v2.X, v0.Y + v1.Y + v2.Y, v0.Z + v1.Z + v2.Z };
-                var rty = Math.Sqrt(er[0] * er[0] + er[1] * er[1] + er[2] * er[2]);
-                er[0] = -er[0] / rty; er[1] = -er[1] / rty; er[2] = -er[2] / rty;
+                var er = new double[] { v0.X + v1.X + v2.X, v0.Y + v1.Y + v2.Y, v0.Z + v1.Z + v2.Z }; //vector through the triangle
+                var rty = Math.Sqrt(er[0] * er[0] + er[1] * er[1] + er[2] * er[2]); //its length
+                er[0] = -er[0] / rty; er[1] = -er[1] / rty; er[2] = -er[2] / rty; //normalized back vector
                 var vini = new Vertex(er, double.NaN);
 
                 this.vertices.Add(v0);
                 this.vertices.Add(v1);
                 this.vertices.Add(v2);
                 this.vinit.Add(vini);
-                this.vertices.Add(vini);
+                this.vertices.Add(vini); //now convex hull of 4 vectors covers center of the sphere
 
                 triangles.Add(new triangle(v1, v2, v0));
                 triangles.Add(new triangle(v0, v1, vini));
@@ -145,9 +145,9 @@ namespace Delaunay_Voronoi_Library
                 Voronoi();
 
                 var tu = DateTime.Now;
-                if (Uncertainty == true) createcovariogram(this.vertices.ToList(), 13);
-                //Console.WriteLine("Variogram: {0}", DateTime.Now - tu);
             }
+            else
+                throw new ArgumentException();
         }
 
         #endregion _constructors
@@ -161,7 +161,7 @@ namespace Delaunay_Voronoi_Library
         {
             get
             {
-                return pol;
+                return voronoiCells;
             }
         }
         /// <summary>
@@ -199,192 +199,33 @@ namespace Delaunay_Voronoi_Library
             Vertex y0;
             foreach (var q in vertices)
             {
-                List<Vertex> temp = new List<Vertex>();
-                triangle t = q.GetAdjacentTriangles[0];
-                Vertex y = t.GetVertices.First(a => a != q);
+                List<Vertex> trianglesCircumCentres = new List<Vertex>();
+                triangle t = q.GetAdjacentTriangles[0]; //start from any adjecent triangle
+                Vertex y = t.GetVertices.First(a => a != q); //and from any adjecent vertex
 
-                for (int i = 0; i < q.GetAdjacentTriangles.Count; i++)
+                for (int i = 0; i < q.GetAdjacentTriangles.Count; i++) //iterating over adjecent triangles, collecting their circumcentres, they form voronoi cell
                 {
-                    temp.Add(t.GetOR);
+                    trianglesCircumCentres.Add(t.GetOR);
                     y0 = y;
                     y = t.GetVertices.Single(a => (a != y) && (a != q));
                     t = q.GetAdjacentTriangles.Single(a => a.GetVertices.Contains(y) && (!a.GetVertices.Contains(y0)));
                 }
 
-                VoronoiCell p = new VoronoiCell(q, temp);
-                pol.Add(p);
+                VoronoiCell p = new VoronoiCell(q, trianglesCircumCentres);
+                voronoiCells.Add(p);
                 q.Voronoi_Cell = p;
             }
         }
-
-        void createvariogram(List<Vertex> vertices, int s)
+      
+        /// <summary>
+        /// Adds a point to the Delaunay triangulation
+        /// </summary>
+        /// <param name="x"></param>
+        /// <param name="isPermanentAdd">mixed responsibility here</param>
+        /// <returns></returns>
+        int addnewpoint(Vertex x, bool isPermanentAdd = true) 
         {
-            apprvariogramm = new List<KeyValuePair<double, double>>();
-            int count = vertices.Count;
-            List<Stack<KeyValuePair<double, double>>> sts = new List<Stack<KeyValuePair<double, double>>>();
-            List<KeyValuePair<double, double>> x = new List<KeyValuePair<double, double>>();
-
-            var trt = DateTime.Now;
-            Stack<KeyValuePair<double, double>> l = new Stack<KeyValuePair<double, double>>();
-
-            for (int i = 0; i < count; i++)
-            {
-                var y = vertices[i];
-                for (int j = i + 1; j < count; j++)
-                {
-                    var u = vertices[j];
-                    double d = u.X * y.X + u.Y * y.Y + u.Z * y.Z;
-                    if (d <= 0) continue;
-                    l.Push(new KeyValuePair<double, double>(d, Math.Abs(u.Value - y.Value)));
-                }
-            }
-            //Console.WriteLine(DateTime.Now - trt);
-
-            trt = DateTime.Now;
-            x.Add(new KeyValuePair<double, double>(1, 0));
-            sts.Add(l);
-
-            while (sts.Count < s)
-            {
-                int p = sts.Max(a => a.Count);
-                var q = sts.FindIndex(a => a.Count == p);
-                l = sts[q];
-                var xi = x[q];
-                sts.Remove(l);
-                x.Remove(xi);
-
-                var xis = Math.Cos((Math.Acos(xi.Key) + Math.Acos(xi.Value)) / 2);
-                x.Add(new KeyValuePair<double, double>(xi.Key, xis));
-                x.Add(new KeyValuePair<double, double>(xis, xi.Value));
-
-                var k1 = new Stack<KeyValuePair<double, double>>();
-                var k2 = new Stack<KeyValuePair<double, double>>();
-                sts.Add(k1); sts.Add(k2);
-
-                for (int i = 0; i < p; i++)
-                {
-                    var y = l.Pop();
-                    if (y.Key > xis) k1.Push(y);
-                    else k2.Push(y);
-                }
-            }
-
-
-
-            //Console.WriteLine(DateTime.Now - trt);
-            trt = DateTime.Now;
-            apprvariogramm.Add(new KeyValuePair<double, double>(0, 0));
-            for (int i = 0; i < s; i++)
-            {
-                double mo = sts[i].Sum(a => a.Value) / sts[i].Count;
-                mo = mo * mo / sts[i].Count;
-                double d = (sts[i].Sum(v => v.Value * v.Value) - mo) / (sts[i].Count - 1);
-                apprvariogramm.Add(new KeyValuePair<double, double>(Math.Acos(x[i].Value), d));
-            }
-            apprvariogramm.OrderByDescending(a => a.Key);
-            //Console.WriteLine(DateTime.Now - trt);
-        }
-
-        void createcovariogram(List<Vertex> vertices, int s)
-        {
-            apprcovariogramm = new List<KeyValuePair<double, double>>();
-            apprvariogramm = new List<KeyValuePair<double, double>>();
-            int count = vertices.Count;
-            List<Stack<KeyValuePair<double, double>>> sts = new List<Stack<KeyValuePair<double, double>>>();
-            List<KeyValuePair<double, double>> x = new List<KeyValuePair<double, double>>();
-
-            var trt = DateTime.Now;
-            Stack<KeyValuePair<double, double>> l = new Stack<KeyValuePair<double, double>>();
-            for (int i = 0; i < count; i++)
-            {
-                var y = vertices[i];
-                for (int j = i + 1; j < 4000; j++)
-                {
-                    var u = vertices[j];
-                    double d = u.X * y.X + u.Y * y.Y + u.Z * y.Z;
-                    if (d <= 0) continue;
-                    l.Push(new KeyValuePair<double, double>(d, u.Value));
-                    l.Push(new KeyValuePair<double, double>(d, y.Value));
-                }
-                if (l.Count > 16000000) break;
-            }
-            //Console.WriteLine(DateTime.Now - trt);
-
-            trt = DateTime.Now;
-            x.Add(new KeyValuePair<double, double>(1, 0));
-            sts.Add(l);
-
-            while (sts.Count < s)
-            {
-                int p = sts.Max(a => a.Count);
-                var q = sts.FindIndex(a => a.Count == p);
-                l = sts[q];
-                var xi = x[q];
-                sts.Remove(l);
-                x.Remove(xi);
-
-                var xis = Math.Cos((Math.Acos(xi.Key) + Math.Acos(xi.Value)) / 2);
-                x.Add(new KeyValuePair<double, double>(xi.Key, xis));
-                x.Add(new KeyValuePair<double, double>(xis, xi.Value));
-
-                var k1 = new Stack<KeyValuePair<double, double>>();
-                var k2 = new Stack<KeyValuePair<double, double>>();
-                sts.Add(k1); sts.Add(k2);
-                //Console.WriteLine(sts.Count);
-                for (int i = 0; i < p; i += 2)
-                {
-                    var y = l.Pop();
-                    if (y.Key > xis) { k1.Push(y); k1.Push(l.Pop()); }
-                    else { k2.Push(y); k2.Push(l.Pop()); }
-                }
-            }
-
-            //Console.WriteLine(DateTime.Now - trt);
-            trt = DateTime.Now;
-
-            for (int i = 0; i < s; i++)
-            {
-                int z = sts[i].Count;
-                double p0 = 0, p1 = 0, p2 = 0;
-                double r0 = 0, r1 = 0;
-                double q0 = 0, q1 = 0, q2 = 0;
-                for (int j = 0; j < z; j += 2)
-                {
-                    var t1 = sts[i].Pop();
-                    var t2 = sts[i].Pop();
-                    p0 += t1.Value * t2.Value;
-                    p1 += t1.Value;
-                    p2 += t2.Value;
-                    r0 += t1.Value * t1.Value;
-                    r1 += t2.Value * t2.Value;
-                    q0 = Math.Abs(t1.Value - t2.Value);
-                    q1 += q0 * q0;
-                    q2 += q0;
-                }
-
-                double c = 2.0 * Math.Abs(p0 - 2 * p1 * p2 / z) / z;
-                double d01 = Math.Sqrt(2.0 * (r0 - 2.0 * p1 * p1 / z) / (z - 2));
-                double d02 = Math.Sqrt(2.0 * (r1 - 2.0 * p2 * p2 / z) / (z - 2));
-                c = c / d01 / d02;
-
-                double mo = Math.Sqrt(2.0 * (q1 - 2.0 * q2 * q2 / z) / (z - 2));
-                apprvariogramm.Add(new KeyValuePair<double, double>(Math.Acos(x[i].Value), mo));
-                apprcovariogramm.Add(new KeyValuePair<double, double>(Math.Acos(x[i].Value), c));
-            }
-
-            apprcovariogramm = apprcovariogramm.OrderByDescending(a => a.Key).ToList();
-            apprvariogramm = apprvariogramm.OrderByDescending(a => a.Key).ToList();
-            apprvariogramm.Add(new KeyValuePair<double, double>(0, apprvariogramm[apprvariogramm.Count - 1].Value));
-            apprcovariogramm.Add(new KeyValuePair<double, double>(0, apprcovariogramm[apprcovariogramm.Count - 1].Value));
-            apprcovariogramm = apprcovariogramm.OrderBy(a => a.Key).ToList();
-            apprvariogramm = apprvariogramm.OrderBy(a => a.Key).ToList();
-
-            //Console.WriteLine(DateTime.Now - trt);
-        }
-
-        int addnewpoint(Vertex x, bool isPermanentAdd = true)
-        {
-            foreach (var w in vinit.Where(a => Math.Abs(x.X - a.X) < 0.0000001 && Math.Abs(x.Y - a.Y) < 0.0000001 && Math.Abs(x.Z - a.Z) < 0.0000001)) //making "dummy" bootstrap vertex a real useful vertex if needed
+            foreach (var w in vinit.Where(a => Math.Abs(x.X - a.X) < 0.0000001 && Math.Abs(x.Y - a.Y) < 0.0000001 && Math.Abs(x.Z - a.Z) < 0.0000001)) //"dummy" bootstrap vertex hit! setting a real useful value for it. Removing from butstrap list
             {
                 w.SetNewPosition(x.Longitude, x.Latitude);
                 w.Value = x.Value;
@@ -394,13 +235,13 @@ namespace Delaunay_Voronoi_Library
 
             if (vertices.Count > 0)
             {
-                var tm = vertices.ElementAt(0);
-                double dis = (tm.X - x.X) * (tm.X - x.X) + (tm.Y - x.Y) * (tm.Y - x.Y) + (tm.Z - x.Z) * (tm.Z - x.Z), dis0 = 0; //tracking distance to closest point
-                Vertex ind0 = tm;
+                Vertex v0 = vertices.ElementAt(0);
+                double dis = (v0.X - x.X) * (v0.X - x.X) + (v0.Y - x.Y) * (v0.Y - x.Y) + (v0.Z - x.Z) * (v0.Z - x.Z), dis0 = 0; //tracking distance to closest point
+                Vertex v1 = v0;
                 do
                 {
-                    tm = ind0;
-                    foreach (var er in tm.GetAdjacentTriangles) //looking through closest point by jumping along triangles towards minimazation of distance?
+                    v0 = v1;
+                    foreach (var er in v0.GetAdjacentTriangles) //looking through closest point by jumping along triangles towards minimazation of distance?
                     {
                         foreach (var t in er.GetVertices)
                         {
@@ -408,64 +249,65 @@ namespace Delaunay_Voronoi_Library
                             if (dis0 < dis)
                             {
                                 dis = dis0;
-                                ind0 = t;
+                                v1 = t;
                             }
                         }
                     }
-                } while (tm != ind0);
+                } while (v0 != v1); //we did not move closer. The point is alread
 
-                if (dis < 0.0000000001)
+                if (dis < 0.0000000001) //vertex hit
                 {
-                    if (isPermanentAdd == false)
+                    if (isPermanentAdd == false) //TODO: remove mixed responsibility
                     {
-                        x.Value = ind0.Value;
-                        x.DataIndex = ind0.DataIndex;
+                        x.Value = v1.Value;
+                        x.DataIndex = v1.DataIndex;
                     }
-                    else { traceSource.TraceEvent(TraceEventType.Error, 4, "Duplicate Vertex in the initial vertex sequence. Using first one, discarding later duplicates vertex values"); }
+                    else { traceSource.TraceEvent(TraceEventType.Warning, 4, "Duplicate Vertex in the initial vertex sequence. Using first one, discarding later duplicates vertex values. This can be false warning if the point is one of the initial triangle points"); }
                     return -1;
                 }
             }
 
-            triangle z = null;
-            triangle l = triangles.ElementAt(0);
+            triangle suspectCoveringTriangle = null;
+            triangle currentIterTriangle = triangles.ElementAt(0);
 
-            if (Math.Sign(l.SignVertex(x)) == l.GetSignCenter)
+            if (Math.Sign(currentIterTriangle.SignVertex(x)) == currentIterTriangle.GetSignCenter) //x is outside the triangle l, we need to find the triangle that covers vertex x
             {
-                l.TempIndex = x;
+                currentIterTriangle.TempIndex = x;
 
-                double e0 = (l.GetVertices[0].X - x.X) * (l.GetVertices[0].X - x.X) + (l.GetVertices[0].Y - x.Y) * (l.GetVertices[0].Y - x.Y) + (l.GetVertices[0].Z - x.Z) * (l.GetVertices[0].Z - x.Z);
-                double e1 = (l.GetVertices[1].X - x.X) * (l.GetVertices[1].X - x.X) + (l.GetVertices[1].Y - x.Y) * (l.GetVertices[1].Y - x.Y) + (l.GetVertices[1].Z - x.Z) * (l.GetVertices[1].Z - x.Z);
-                double e2 = (l.GetVertices[2].X - x.X) * (l.GetVertices[2].X - x.X) + (l.GetVertices[2].Y - x.Y) * (l.GetVertices[2].Y - x.Y) + (l.GetVertices[2].Z - x.Z) * (l.GetVertices[2].Z - x.Z);
+                //getting the direction to move in terms of l triangle vertices
+                double e0 = (currentIterTriangle.GetVertices[0].X - x.X) * (currentIterTriangle.GetVertices[0].X - x.X) + (currentIterTriangle.GetVertices[0].Y - x.Y) * (currentIterTriangle.GetVertices[0].Y - x.Y) + (currentIterTriangle.GetVertices[0].Z - x.Z) * (currentIterTriangle.GetVertices[0].Z - x.Z);
+                double e1 = (currentIterTriangle.GetVertices[1].X - x.X) * (currentIterTriangle.GetVertices[1].X - x.X) + (currentIterTriangle.GetVertices[1].Y - x.Y) * (currentIterTriangle.GetVertices[1].Y - x.Y) + (currentIterTriangle.GetVertices[1].Z - x.Z) * (currentIterTriangle.GetVertices[1].Z - x.Z);
+                double e2 = (currentIterTriangle.GetVertices[2].X - x.X) * (currentIterTriangle.GetVertices[2].X - x.X) + (currentIterTriangle.GetVertices[2].Y - x.Y) * (currentIterTriangle.GetVertices[2].Y - x.Y) + (currentIterTriangle.GetVertices[2].Z - x.Z) * (currentIterTriangle.GetVertices[2].Z - x.Z);
 
-                int u = 0;
+                int nextVertexIndex = 0;
                 if ((e0 >= e1) && (e2 >= e1))
                 {
-                    u = 1;
+                    nextVertexIndex = 1;
                 }
 
                 if ((e0 >= e2) && (e1 >= e2))
                 {
-                    u = 2;
+                    nextVertexIndex = 2;
                 }
 
-                while (true)
+                while (true) //iterating through triangles, moving closer to the triangle containing x
                 {
-                    z = null;
-                    foreach (var et in l.GetVertices[u].GetAdjacentTriangles)
+                    suspectCoveringTriangle = null;
+                    foreach (var et in currentIterTriangle.GetVertices[nextVertexIndex].GetAdjacentTriangles)//checking for covering triangle among nearest neighbour trianles
                     {
                         if ((et.TempIndex != x) && (Math.Sign(et.SignVertex(x)) != et.GetSignCenter))
                         {
-                            z = et;
+                            suspectCoveringTriangle = et; //triangle coveting x is found!
                             break;
                         }
                     }
 
-                    if (z != null) break;
+                    if (suspectCoveringTriangle != null) break;
 
                     triangle t0 = null;
                     int u0 = 0;
                     double e = 5;
-                    foreach (var et in l.GetVertices[u].GetAdjacentTriangles)
+                    foreach (var et in currentIterTriangle.GetVertices[nextVertexIndex].GetAdjacentTriangles) //determining what adjecent triangle to move into next for investigation
                     {
                         if (et.TempIndex != x)
                         {
@@ -496,25 +338,25 @@ namespace Delaunay_Voronoi_Library
                             }
                         }
                     }
-                    l = t0;
-                    u = u0;
+                    currentIterTriangle = t0;
+                    nextVertexIndex = u0;
                 }
-                l = z;
+                currentIterTriangle = suspectCoveringTriangle;
             }
 
-            HashSet<triangle> m = new HashSet<triangle>();
+            HashSet<triangle> coveringTriangles = new HashSet<triangle>(); //in case of x is at the edge of triangles???
 
-            anymore(m, l, x);
+            CheckAdjecentTrianglesForCovering(coveringTriangles, currentIterTriangle, x);
 
             if (isPermanentAdd == false)
             {
-                foreach (var d in m)
+                foreach (var d in coveringTriangles)
                     pseuvotr.Add(new triangle(d.GetVertices[0], d.GetVertices[1], d.GetVertices[2], false));
             }
 
             List<Edge> b = new List<Edge>();
 
-            foreach (var t in m)
+            foreach (var t in coveringTriangles)
             {
                 if (b.RemoveAll(a => a.GetVertexes.Contains(t.GetVertices[0]) && a.GetVertexes.Contains(t.GetVertices[1])) == 0)
                 {
@@ -542,18 +384,24 @@ namespace Delaunay_Voronoi_Library
             return 1;
         }
 
-        void anymore(HashSet<triangle> m, triangle l, Vertex x)
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="coveringTriangles"></param>
+        /// <param name="startTriangle"></param>
+        /// <param name="x"></param>
+        void CheckAdjecentTrianglesForCovering(HashSet<triangle> coveringTriangles, triangle startTriangle, Vertex x)
         {
-            foreach (var w in l.GetVertices)
+            foreach (var w in startTriangle.GetVertices)
             {
                 foreach (var e in w.GetAdjacentTriangles)
                 {
                     if (Math.Sign(e.SignVertex(x)) != e.GetSignCenter)
                     {
-                        if (!m.Contains(e))
+                        if (!coveringTriangles.Contains(e))
                         {
-                            m.Add(e);
-                            anymore(m, e, x);
+                            coveringTriangles.Add(e);
+                            CheckAdjecentTrianglesForCovering(coveringTriangles, e, x);
                         }
                     }
                 }
@@ -562,18 +410,18 @@ namespace Delaunay_Voronoi_Library
 
         bool TryDeletePoint(Vertex v)
         {
-            List<Edge> edges = new List<Edge>();
-            List<Vertex> verts = new List<Vertex>();
-            List<triangle> trsw = new List<triangle>();
+            List<Edge> unenclosedEdges = new List<Edge>();
+            List<Vertex> unenclosedVerts = new List<Vertex>();
+            List<triangle> newlyConstructedTriangles = new List<triangle>();
             Dictionary<Vertex, Vertex> parallelcopy = new Dictionary<Vertex, Vertex>();
 
             foreach (var a in v.GetAdjacentTriangles)
             {
                 foreach (var w in a.GetVertices)
                 {
-                    if (w != v && !verts.Contains(w))
+                    if (w != v && !unenclosedVerts.Contains(w))
                     {
-                        verts.Add(w);
+                        unenclosedVerts.Add(w);
                     }
                 }
                 List<Vertex> tempo = new List<Vertex>();
@@ -585,20 +433,20 @@ namespace Delaunay_Voronoi_Library
                     }
                 }
                 Vertex p1 = tempo[0], p2 = tempo[1];
-                edges.Add(new Edge(p1, p2));
+                unenclosedEdges.Add(new Edge(p1, p2));
             }
             vertices.Remove(v);
-            Vertex v1 = verts[0],
-                   v2 = edges.First(a => a.GetVertexes.Contains(v1)).GetVertexes.Single(b => b != v1),
-                   v3 = edges.Single(a => (a.GetVertexes.Contains(v2)) && (!a.GetVertexes.Contains(v1))).GetVertexes.Single(b => b != v2);
+            Vertex v1 = unenclosedVerts[0],
+                   v2 = unenclosedEdges.First(a => a.GetVertexes.Contains(v1)).GetVertexes.Single(b => b != v1),
+                   v3 = unenclosedEdges.Single(a => (a.GetVertexes.Contains(v2)) && (!a.GetVertexes.Contains(v1))).GetVertexes.Single(b => b != v2);
 
             int maxit = 0;
-            if (verts.Count == 4) maxit = 2;
-            if (verts.Count > 4) maxit = verts.Count;
+            if (unenclosedVerts.Count == 4) maxit = 2;
+            if (unenclosedVerts.Count > 4) maxit = unenclosedVerts.Count;
 
-            while (verts.Count > 3)
+            while (unenclosedVerts.Count > 3)
             {
-                triangle t1 = new triangle(v1, v2, v3, false);
+                triangle t1 = new triangle(v1, v2, v3, false); //triangle under investigation
                 bool y = true;
                 foreach (var v4 in vertices)
                 {
@@ -610,42 +458,42 @@ namespace Delaunay_Voronoi_Library
                     }
                 }
 
-                if (y == true)
+                if (y == true) //good. all non-enclosed points are at the same side from the t1 plane. it is probably boundary  triangle
                 {
                     var g = new triangle(v1, v3, new Vertex(new double[] { 0, 0, 0 }), false);
                     if (Math.Sign(g.SignVertex(v2)) == Math.Sign(g.SignVertex(v)))
-                    {
+                    {//does not used in a convex hull. looking for other triangle that forms a convex hull
                         maxit--;
                         if (maxit == 0) { vertices.Add(v); return false; }
                         v1 = v2;
                         v2 = v3;
-                        v3 = edges.Single(a => (a.GetVertexes.Contains(v2)) && (!a.GetVertexes.Contains(v1))).GetVertexes.Single(b => b != v2);
+                        v3 = unenclosedEdges.Single(a => (a.GetVertexes.Contains(v2)) && (!a.GetVertexes.Contains(v1))).GetVertexes.Single(b => b != v2);
 
                     }
                     else
-                    {
-                        verts.Remove(v2);
-                        if (verts.Count == 4) maxit = 2;
-                        if (verts.Count > 4) maxit = verts.Count;
-                        edges.RemoveAll(a => a.GetVertexes.Contains(v2));
-                        edges.Add(new Edge(v1, v3));
-                        trsw.Add(t1);
+                    { //v2 is part of convex hull. triangle containing it is needed!
+                        unenclosedVerts.Remove(v2);
+                        if (unenclosedVerts.Count == 4) maxit = 2;
+                        if (unenclosedVerts.Count > 4) maxit = unenclosedVerts.Count;
+                        unenclosedEdges.RemoveAll(a => a.GetVertexes.Contains(v2));
+                        unenclosedEdges.Add(new Edge(v1, v3));
+                        newlyConstructedTriangles.Add(t1);
                         v2 = v3;
-                        v3 = edges.Single(a => (a.GetVertexes.Contains(v2)) && (!a.GetVertexes.Contains(v1))).GetVertexes.Single(b => b != v2);
+                        v3 = unenclosedEdges.Single(a => (a.GetVertexes.Contains(v2)) && (!a.GetVertexes.Contains(v1))).GetVertexes.Single(b => b != v2);
                     }
                 }
 
-                if (y == false)
+                if (y == false) //poor t1 combination it s covered by convex hull
                 {
                     maxit--;
                     if (maxit == 0) { vertices.Add(v); return false; }
                     v1 = v2;
                     v2 = v3;
-                    v3 = edges.Single(a => (a.GetVertexes.Contains(v2)) && (!a.GetVertexes.Contains(v1))).GetVertexes.Single(b => b != v2);
+                    v3 = unenclosedEdges.Single(a => (a.GetVertexes.Contains(v2)) && (!a.GetVertexes.Contains(v1))).GetVertexes.Single(b => b != v2);
                 }
             }
-            var fgh = new triangle(verts[0], verts[1], verts[2], false);
-            trsw.Add(fgh);
+            var fgh = new triangle(unenclosedVerts[0], unenclosedVerts[1], unenclosedVerts[2], false);
+            newlyConstructedTriangles.Add(fgh);
 
             maxit = v.GetAdjacentTriangles.Count;
             for (int k = 0; k < maxit; k++)
@@ -655,7 +503,7 @@ namespace Delaunay_Voronoi_Library
                 triangles.Remove(o);
             }
 
-            foreach (var o in trsw)
+            foreach (var o in newlyConstructedTriangles)
             {
                 triangles.Add(new triangle(o.GetVertices[0], o.GetVertices[1], o.GetVertices[2]));
             }
