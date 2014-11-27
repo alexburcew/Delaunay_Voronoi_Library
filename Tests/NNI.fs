@@ -34,4 +34,4 @@ type UnitTest() =
         let voronoi = new Delaunay_Voronoi(new Collections.Generic.List<Vertex>(vertices),false);
         let lat = Math.Asin(1.0/sqrt(3.0))*180.0/Math.PI
         let res = voronoi.NatNearestInterpolation(45.0,lat,false,false)
-        Assert.AreEqual(8.0, res.Value,1e-13)
+        Assert.AreEqual(8.0,(snd res.[0]),1e-13)
