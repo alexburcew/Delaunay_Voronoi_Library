@@ -1,7 +1,22 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2012
+# Visual Studio 2013
+VisualStudioVersion = 12.0.31101.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{F60C7FA9-7293-455E-BD4D-25F4BA1D03BD}"
+	ProjectSection(SolutionItems) = preProject
+		.nuget\packages.config = .nuget\packages.config
+	EndProjectSection
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Delaunay-Voronoi_Library", "Delaunay-Voronoi_Library\Delaunay-Voronoi_Library.csproj", "{97F3D566-C191-4468-A4E7-503195F45A4C}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Tests", "Tests\Tests.fsproj", "{E03F1480-6F78-4964-972B-D9C27FA2108B}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "GHCN_cross_validation", "GHCN_cross_validation\GHCN_cross_validation.fsproj", "{13260E7B-C22B-451D-AD77-337F9B60D9DB}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "GHCN_performance", "GHCN_performance\GHCN_performance.fsproj", "{4CFF8AC0-1219-4334-A97C-A4069F93C2EF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GeoMath", "GeoMath\GeoMath.csproj", "{AB24A702-2647-4E66-A2E2-6D315BF6E701}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -13,6 +28,22 @@ Global
 		{97F3D566-C191-4468-A4E7-503195F45A4C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{97F3D566-C191-4468-A4E7-503195F45A4C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{97F3D566-C191-4468-A4E7-503195F45A4C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E03F1480-6F78-4964-972B-D9C27FA2108B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E03F1480-6F78-4964-972B-D9C27FA2108B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E03F1480-6F78-4964-972B-D9C27FA2108B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E03F1480-6F78-4964-972B-D9C27FA2108B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{13260E7B-C22B-451D-AD77-337F9B60D9DB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{13260E7B-C22B-451D-AD77-337F9B60D9DB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{13260E7B-C22B-451D-AD77-337F9B60D9DB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{13260E7B-C22B-451D-AD77-337F9B60D9DB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4CFF8AC0-1219-4334-A97C-A4069F93C2EF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4CFF8AC0-1219-4334-A97C-A4069F93C2EF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4CFF8AC0-1219-4334-A97C-A4069F93C2EF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4CFF8AC0-1219-4334-A97C-A4069F93C2EF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AB24A702-2647-4E66-A2E2-6D315BF6E701}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AB24A702-2647-4E66-A2E2-6D315BF6E701}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AB24A702-2647-4E66-A2E2-6D315BF6E701}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AB24A702-2647-4E66-A2E2-6D315BF6E701}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
