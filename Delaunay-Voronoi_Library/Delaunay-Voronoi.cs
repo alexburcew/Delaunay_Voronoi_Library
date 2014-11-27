@@ -90,8 +90,11 @@ namespace Delaunay_Voronoi_Library
         /// <param name="Uncertainty">The uncertainty flag </param>
         public Delaunay_Voronoi(List<Vertex> vertices)
         {
-            int lenght = vertices.Count, i = 0, j = 1, k = 2;
-            if (lenght < 4) { traceSource.TraceEvent(TraceEventType.Critical, 1, "Too few points. Less then 4"); return; }
+            int length = vertices.Count, i = 0, j = 1, k = 2;
+            for (int l = 0; l < length; l++)
+                vertices[l].DataIndex = l;
+
+            if (length < 4) { traceSource.TraceEvent(TraceEventType.Critical, 1, "Too few points. Less then 4"); return; }
             Vertices = vertices.ToArray();
             double A = 0;
             Vertex v0 = null, v1 = null, v2 = null;
@@ -107,9 +110,9 @@ namespace Delaunay_Voronoi_Library
 
                 if (A != 0) break; //belong to the same great-circle??
                 k++;
-                if (k == lenght - 1) { j += 1; k = j + 1; } //this is "for loop in for loop in for loop!!!"
-                if (j == lenght - 1) { i += 1; j = i + 1; }
-                if (i == lenght - 1) break;
+                if (k == length - 1) { j += 1; k = j + 1; } //this is "for loop in for loop in for loop!!!"
+                if (j == length - 1) { i += 1; j = i + 1; }
+                if (i == length - 1) break;
 
             }
             if (A != 0) //v0, v1 and v2 are not at the great circle
@@ -135,12 +138,12 @@ namespace Delaunay_Voronoi_Library
                     addnewpoint(jr);
                 }
 
-                foreach (var e in vinit)
+                foreach (var e in vinit.ToArray())
                 {
                     if (TryDeletePoint(e) == false) traceSource.TraceEvent(TraceEventType.Warning, 2, "Can't remove one of the bootstrap points");
+                    else
+                        vinit.Remove(e);
                 }
-
-                vinit.Clear();
 
                 Voronoi();
 
@@ -408,12 +411,25 @@ namespace Delaunay_Voronoi_Library
             }
         }
 
+        static double InnerProduct(Vertex v1,Vertex v2)
+        {
+            return v1.X * v2.X + v1.Y * v2.Y + v1.Z * v2.Z;
+        }
+
         bool TryDeletePoint(Vertex v)
         {
             List<Edge> unenclosedEdges = new List<Edge>();
             List<Vertex> unenclosedVerts = new List<Vertex>();
             List<triangle> newlyConstructedTriangles = new List<triangle>();
             Dictionary<Vertex, Vertex> parallelcopy = new Dictionary<Vertex, Vertex>();
+
+            bool isConvexHullVertex = vertices.Any(v5 => v5 != v && InnerProduct(v,v5)<=0.0);
+            if (isConvexHullVertex) //removingf the vertex will cause the convex hull not to cover 0,0,0 point
+            {
+                traceSource.TraceEvent(TraceEventType.Error,5,"Unable to remove the vertex as this causes triangulation not to cover 0,0,0 point");
+                return false;
+            }
+
 
             foreach (var a in v.GetAdjacentTriangles)
             {
@@ -458,11 +474,11 @@ namespace Delaunay_Voronoi_Library
                     }
                 }
 
-                if (y == true) //good. all non-enclosed points are at the same side from the t1 plane. it is probably boundary  triangle
+                if (y == true) //good. all vertices are at the same side from the t1 plane. it is probably dalaynay triangle
                 {
                     var g = new triangle(v1, v3, new Vertex(new double[] { 0, 0, 0 }), false);
-                    if (Math.Sign(g.SignVertex(v2)) == Math.Sign(g.SignVertex(v)))
-                    {//does not used in a convex hull. looking for other triangle that forms a convex hull
+                    if (Math.Sign(g.SignVertex(v2)) == Math.Sign(g.SignVertex(v))) //check for delaunay properies?
+                    {
                         maxit--;
                         if (maxit == 0) { vertices.Add(v); return false; }
                         v1 = v2;
@@ -471,7 +487,7 @@ namespace Delaunay_Voronoi_Library
 
                     }
                     else
-                    { //v2 is part of convex hull. triangle containing it is needed!
+                    {
                         unenclosedVerts.Remove(v2);
                         if (unenclosedVerts.Count == 4) maxit = 2;
                         if (unenclosedVerts.Count > 4) maxit = unenclosedVerts.Count;
@@ -482,8 +498,7 @@ namespace Delaunay_Voronoi_Library
                         v3 = unenclosedEdges.Single(a => (a.GetVertexes.Contains(v2)) && (!a.GetVertexes.Contains(v1))).GetVertexes.Single(b => b != v2);
                     }
                 }
-
-                if (y == false) //poor t1 combination it s covered by convex hull
+                else //poor t1 combination it s covered by convex hull
                 {
                     maxit--;
                     if (maxit == 0) { vertices.Add(v); return false; }
@@ -608,10 +623,10 @@ namespace Delaunay_Voronoi_Library
                 pseudopol.Add(p);
             }
         }
-        Tuple<int, double>[] NatNearestInterpolation(Vertex vert, bool ExceptNaN, bool Uncertainty = false)
+        Tuple<int, double>[] NatNearestInterpolation(Vertex vert, bool CheckForNaN)
         {
-            List<Vertex> lv = new List<Vertex>();
-            if (apprvariogramm == null) Uncertainty = false;
+            bool Uncertainty = false;
+            List<Vertex> lv = new List<Vertex>();            
             pseudopol.Clear();
             pseuvotr.Clear();
             pseuvovert.Clear();
@@ -652,7 +667,7 @@ namespace Delaunay_Voronoi_Library
             Dictionary<Vertex, double> deltas = new Dictionary<Vertex, double>();
             foreach (var q in lv)
             {
-                if ((!ExceptNaN) || (ExceptNaN && !double.IsNaN(q.Value)))
+                if ((!CheckForNaN) || (CheckForNaN && !double.IsNaN(q.Value)))
                 {
                     double sqss = q.Voronoi_Cell.GetSquare;
                     double sqs = pseudopol.Single(a => a.GetCellCentr == q).GetSquare;
@@ -710,86 +725,45 @@ namespace Delaunay_Voronoi_Library
         /// <param name="parallel">parallel flag.</param>
         /// <param name="ExceptNaN">Except NaN points </param>
         /// <param name="Uncertainty">The uncertainty flag </param>
-        public List<Vertex> NatNearestInterpolation(List<Vertex> f, bool parallel = false, bool ExceptNaN = true, bool Uncertainty = false)
-        {
-            if (parallel == false)
-            {
+        public List<Vertex> NatNearestInterpolation(List<Vertex> f,bool checkForNaN)
+        {            
+
                 List<Vertex> res = new List<Vertex>();
                 foreach (var w in f)
                 {
                     Vertex v = new Vertex(w);
-                    NatNearestInterpolation(w, ExceptNaN, Uncertainty);
+                    NatNearestInterpolation(w, checkForNaN);
                     res.Add(v);
                 }
                 return res;
-            }
-            else
-            {
-                int pc = Environment.ProcessorCount;
-
-                Delaunay_Voronoi[] dvm = new Delaunay_Voronoi[pc];
-
-                var c = DateTime.Now;
-                dvm[0] = this;
-                for (int i = 1; i < pc; i++)
-                    dvm[i] = new Delaunay_Voronoi(this);
-                traceSource.TraceEvent(TraceEventType.Information, 3, "Copy {0}", DateTime.Now - c);
-
-                int[] h = new Int32[pc + 1];
-                h[0] = 0;
-                h[pc] = f.Count;
-                for (int i = 1; i < pc; i++)
-                {
-                    h[i] = (int)Math.Truncate((double)(i * f.Count / pc));
-                }
-                List<Vertex> res = new List<Vertex>();
-                Action<int> _ForAction = (i) =>
-                {
-                    int _h1, _h2;
-                    lock (h) { _h1 = h[i]; _h2 = h[i + 1]; }
-                    List<Vertex> d = new List<Vertex>();
-                    for (int j = _h1; j < _h2; j++)
-                    {
-                        Vertex v = new Vertex(f[j]);
-
-                        dvm[i].NatNearestInterpolation(v, ExceptNaN, Uncertainty);
-
-                        d.Add(v);
-                    }
-                    lock (res)
-                    {
-                        res.AddRange(d);
-                    }
-                };
-                Parallel.For(0, pc, _ForAction);
-
-                return res;
-            }
+            
         }
 
         /// <summary>
         /// Natural Nearest Interpolation.
         /// </summary>
-        public List<Vertex> NatNearestInterpolation(double fromlongitude, double fromlatitude, double tolongitude, double tolatitude, int Nlongitude, int Nlatitude, bool parallel = false, bool ExceptNaN = true, bool Uncertainty = false)
+        public List<Vertex> NaturalNeighbourInterpolation(double fromlongitude, double fromlatitude, double tolongitude, double tolatitude, int Nlongitude, int Nlatitude, bool checkforNaN = true)
         {
+            bool parallel = false,  Uncertainty = false;
             List<Vertex> f = new List<Vertex>();
             for (int i = 0; i < Nlongitude; i++)
                 for (int j = 0; j < Nlatitude; j++)
                     f.Add(new Vertex(fromlongitude + 1.0 * (tolongitude - fromlongitude) / Nlongitude * i, fromlatitude + 1.0 * (tolatitude - fromlatitude) / Nlatitude * j));
 
-            return NatNearestInterpolation(f, parallel, ExceptNaN, Uncertainty);
+            return NatNearestInterpolation(f, checkforNaN);
         }
         /// <summary>
-        /// Natural Nearest Interpolation.
+        /// 
         /// </summary>
         /// <param name="longitude">The longitude.</param>
         /// <param name="latitude">The latitude.</param>
         /// <param name="ExceptNaN">Except NaN points </param>
         /// <param name="Uncertainty">The uncertainty flag </param>
-        public Tuple<int, double>[] NatNearestInterpolation(double longitude, double latitude, bool ExceptNaN = true, bool Uncertainty = false)
+        public Tuple<int, double>[] NaturalNeighbourLinearCombination(double longitude, double latitude, bool checkforNaN = true)
         {
+            bool ExceptNaN = true, Uncertainty = false;
             Vertex w = new Vertex(longitude, latitude);
-            var res = NatNearestInterpolation(w, ExceptNaN, Uncertainty);
+            var res = NatNearestInterpolation(w, checkforNaN);
             return res;
         }
 

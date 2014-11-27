@@ -31,17 +31,15 @@ namespace Delaunay_Voronoi_Library
         /// <param name="longitude">The vertex longitude.</param>
         /// <param name="latitude">The vertex latitude.</param>
         /// <param name="value">The vertex value.</param>
-        public Vertex(double longitude, double latitude, double value = 0, double unc =0,int dataIndex = -1)
+        public Vertex(double longitude, double latitude, double value = 0)
         {
             this.latitude = latitude;
             this.longitude = longitude;
-            this.realvalue = value;
-            this.sigma = unc;
+            this.realvalue = value;            
             Position = new double[3];
             Position[0] = Math.Cos(latitude * Math.PI / 180) * Math.Cos(longitude * Math.PI / 180);
             Position[1] = Math.Cos(latitude * Math.PI / 180) * Math.Sin(longitude * Math.PI / 180);
-            Position[2] = Math.Sin(latitude * Math.PI / 180);
-            this.dataIndex = dataIndex;
+            Position[2] = Math.Sin(latitude * Math.PI / 180);            
             adjacent_triangles = new List<triangle>();
         }
 
@@ -205,7 +203,7 @@ namespace Delaunay_Voronoi_Library
             }
         }
 
-        public int DataIndex { get { return dataIndex; } set {dataIndex = value;} }
+        public int DataIndex { get { return dataIndex; } internal set {dataIndex = value;} }
 
         /// <summary>
         /// Gets or sets the vertex value.

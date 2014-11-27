@@ -13,11 +13,11 @@ let subruns = 31
 
 let predictGrid grid obs =
     let zipped = Array.zip3 obs.lat obs.lon obs.value
-    let vertices = System.Collections.Generic.List(Seq.mapi (fun i x -> let lat,lon,v= x in Delaunay_Voronoi_Library.Vertex(lon,lat,v,0.0,i)) zipped)
+    let vertices = System.Collections.Generic.List(Seq.mapi (fun i x -> let lat,lon,v= x in Delaunay_Voronoi_Library.Vertex(lon,lat,v)) zipped)
     let sw = Stopwatch.StartNew()
-    let delauney = new Delaunay_Voronoi_Library.Delaunay_Voronoi(vertices,false)
+    let delauney = new Delaunay_Voronoi_Library.Delaunay_Voronoi(vertices)
     sprintf "%A: delauley generated" sw.Elapsed |> trace
-    let lenear_weights = Seq.map (fun (x:float*float) -> let lat,lon = x in delauney.NatNearestInterpolation(lon,lat,false,false)) grid |> Array.ofSeq
+    let lenear_weights = Seq.map (fun (x:float*float) -> let lat,lon = x in delauney.NaturalNeighbourLinearCombination(lon,lat)) grid |> Array.ofSeq
     sprintf "%A: got linear weights" sw.Elapsed |> trace
     
 

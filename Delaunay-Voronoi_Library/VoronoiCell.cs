@@ -85,40 +85,29 @@ namespace Delaunay_Voronoi_Library
 
         #region _private_methods
 
-        private double ca, cb, cd, cA, cB, cD, sa, sb, sd;
         private void CalcSquare()
         {
-            double s = 0;
-            int i = 0;
-            while (i < vertices.Count - 1)
+            double s = 0.0;
+            for (int i = 0; i < vertices.Count - 1; i++) // composing total area of triangles sum. Fan of triangles with the common vertex - the centre of the cell
             {
-                ca = (CellCentr.X * vertices[i].X + CellCentr.Y * vertices[i].Y + CellCentr.Z * vertices[i].Z);
-                cb = (CellCentr.X * vertices[i + 1].X + CellCentr.Y * vertices[i + 1].Y + CellCentr.Z * vertices[i + 1].Z);
-                cd = (vertices[i + 1].X * vertices[i].X + vertices[i + 1].Y * vertices[i].Y + vertices[i + 1].Z * vertices[i].Z);
+                Vertex v1 = vertices[i];
+                Vertex v2 = vertices[i + 1];
+                Vertex v3 = CellCentr;
 
-                sb = Math.Sin(Math.Acos(cb));
-                sa = Math.Sin(Math.Acos(ca));
-                sd = Math.Sin(Math.Acos(cd));
-                cA = (ca - cb * cd) / (sb * sd);
-                cB = (cb - ca * cd) / (sa * sd);
-                cD = (cd - cb * ca) / (sb * sa);
-                s += Math.Acos(cA) + Math.Acos(cB) + Math.Acos(cD) - Math.PI;
-                i++;
+                //defining 2 vectors - the 2 sides of triangles
+                double bx = v1.X - v3.X, by = v1.Y - v3.Y, bz = v1.Z - v3.Z;
+                double cx = v2.X - v3.X, cy = v2.Y - v3.Y, cz = v2.Z - v3.Z;
+
+                //cross product vector
+                // A = B x C
+                //see http://en.wikipedia.org/wiki/Cross_product
+                double ax = by * cz - bz * cy, ay = bz * cx - bx * cz, az = bx * cy - by * cx;
+
+                double parallelogramArea = Math.Sqrt(ax * ax + ay * ay + az * az);
+                s += parallelogramArea;
             }
-            ca = (CellCentr.X * vertices[vertices.Count - 1].X + CellCentr.Y * vertices[vertices.Count - 1].Y + CellCentr.Z * vertices[vertices.Count - 1].Z);
-            cb = (CellCentr.X * vertices[0].X + CellCentr.Y * vertices[0].Y + CellCentr.Z * vertices[0].Z);
-            cd = (vertices[0].X * vertices[vertices.Count - 1].X + vertices[0].Y * vertices[vertices.Count - 1].Y + vertices[0].Z * vertices[vertices.Count - 1].Z);
-
-            sb = Math.Sin(Math.Acos(cb));
-            sa = Math.Sin(Math.Acos(ca));
-            sd = Math.Sin(Math.Acos(cd));
-            cA = (ca - cb * cd) / (sb * sd);
-            cB = (cb - ca * cd) / (sa * sd);
-            cD = (cd - cb * ca) / (sb * sa);
-            s += Math.Acos(cA) + Math.Acos(cB) + Math.Acos(cD) - Math.PI;
-            square = s;
+            square = s * 0.5;
         }
-
         #endregion _private_methods
 
     }
